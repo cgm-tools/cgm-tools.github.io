@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Curve of Growth — CGM Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #070b14;
+    --bg2: #0d1526;
+    --bg3: #121e35;
+    --accent: #4fc3f7;
+    --accent2: #00e5ff;
+    --gold: #ffa726;
+    --green: #66bb6a;
+    --red: #ef5350;
+    --purple: #ab47bc;
+    --text: #c8d8f0;
+    --text-dim: #6b82a8;
+    --border: rgba(79, 195, 247, 0.15);
+    --glow: 0 0 20px rgba(79, 195, 247, 0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+  }
+
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    padding: 1rem 2rem;
+    background: rgba(7, 11, 20, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover, .nav-links a.active { color: var(--accent); }
+
+  .page-header {
+    padding: 2.5rem 2rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .page-header h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 0.4rem;
+  }
+
+  .page-header p {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    font-weight: 400;
+  }
+
+  .main-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    min-height: calc(100vh - 120px);
+  }
+
+  /* ── Sidebar controls ── */
+  .sidebar {
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .control-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  select, input[type="range"], input[type="number"] {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    border-radius: 2px;
+    padding: 0.5rem 0.75rem;
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+  }
+
+  select option {
+    background: var(--bg);
+  }
+
+  input[type="range"] {
+    padding: 0.3rem 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .range-row input[type="range"] { flex: 1; }
+
+  .range-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  .divider-line {
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Transition info panel */
+  .trans-info {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .ti-item {}
+  .ti-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+  }
+  .ti-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.88rem;
+    color: var(--gold);
+  }
+
+  /* Regime info */
+  .regime-box {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1rem;
+  }
+
+  .regime-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .regime-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  .regime-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+  }
+
+  .regime-item .regime-name {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .regime-item .regime-eqn {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  /* Multi-b checkbox */
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.88rem;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .checkbox-row input[type="checkbox"] {
+    width: auto;
+    padding: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  /* ── Chart area ── */
+  .chart-area {
+    padding: 1.5rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: var(--bg);
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .chart-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .chart-subtitle {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .chart-wrap {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 1.25rem;
+    position: relative;
+    flex: 1;
+    min-height: 420px;
+    max-height: 560px;
+  }
+
+  /* Statistics row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+  }
+
+  .stat-cell {
+    background: var(--bg2);
+    padding: 0.9rem 1.2rem;
+  }
+
+  .stat-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.95rem;
+    color: var(--accent);
+  }
+
+  /* Annotation overlay on chart */
+  .regime-annotations {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+
+  .ann-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  .ann-swatch {
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  /* Loading spinner */
+  #loading-msg {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    background: var(--bg2);
+    z-index: 5;
+  }
+
+  @media (max-width: 800px) {
+    .main-layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">cgm.github.io</a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="cog.html" class="active">Curve of Growth</a></li>
+    <li><a href="ions.html">Ion Table</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <h1>Curve of Growth</h1>
+  <p>Plot W<sub>r</sub> (rest-frame equivalent width) vs log N (column density) for CGM absorption transitions</p>
+</div>
+
+<div class="main-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <div class="control-group">
+      <div class="control-label">Element / Ion</div>
+      <select id="elementFilter">
+        <option value="all">All elements</option>
+        <option value="H">Hydrogen (H)</option>
+        <option value="He">Helium (He)</option>
+        <option value="C">Carbon (C)</option>
+        <option value="N">Nitrogen (N)</option>
+        <option value="O">Oxygen (O)</option>
+        <option value="Si">Silicon (Si)</option>
+        <option value="S">Sulfur (S)</option>
+        <option value="Fe">Iron (Fe)</option>
+      </select>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">Transition</div>
+      <select id="transitionSelect"></select>
+    </div>
+
+    <hr class="divider-line">
+
+    <div class="control-group">
+      <div class="control-label">Doppler b-parameter (km s⁻¹)</div>
+      <div class="range-row">
+        <input type="range" id="bParam" min="1" max="150" step="1" value="30">
+        <span class="range-val"><span id="bVal">30</span> km/s</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label class="checkbox-row">
+        <input type="checkbox" id="multiB" checked>
+        Show b = 10, 30, 100 km/s curves
+      </label>
+    </div>
+
+    <div class="control-group">
+      <div class="control-label">W<sub>r</sub> units</div>
+      <select id="unitSelect">
+        <option value="mA">mÅ (milliangstroms)</option>
+        <option value="A">Å (angstroms)</option>
+        <option value="kms">km s⁻¹ (velocity)</option>
+      </select>
+    </div>
+
+    <hr class="divider-line">
+
+    <!-- Transition info -->
+    <div class="trans-info" id="transInfo">
+      <div class="ti-item">
+        <div class="ti-label">λ_rest</div>
+        <div class="ti-val" id="ti-lambda">—</div>
+      </div>
+      <div class="ti-item">
+        <div class="ti-label">f-value</div>
+        <div class="ti-val" id="ti-f">—</div>
+      </div>
+      <div class="ti-item">
+        <div class="ti-label">Γ (s⁻¹)</div>
+        <div class="ti-val" id="ti-gamma">—</div>
+      </div>
+      <div class="ti-item">
+        <div class="ti-label">a (b=30)</div>
+        <div class="ti-val" id="ti-a">—</div>
+      </div>
+    </div>
+
+    <!-- Regime guide -->
+    <div class="regime-box">
+      <div class="regime-title">COG Regimes</div>
+
+      <div class="regime-item">
+        <div class="regime-dot" style="background:#4fc3f7"></div>
+        <div>
+          <div class="regime-name">Linear (τ₀ ≪ 1)</div>
+          <div class="regime-eqn">W ∝ N·f·λ</div>
+        </div>
+      </div>
+
+      <div class="regime-item">
+        <div class="regime-dot" style="background:#ffa726"></div>
+        <div>
+          <div class="regime-name">Saturated (τ₀ ≫ 1)</div>
+          <div class="regime-eqn">W ∝ b·√ln(τ₀)</div>
+        </div>
+      </div>
+
+      <div class="regime-item">
+        <div class="regime-dot" style="background:#ef5350"></div>
+        <div>
+          <div class="regime-name">Damped (N very high)</div>
+          <div class="regime-eqn">W ∝ √(N·Γ)</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Chart area -->
+  <section class="chart-area">
+
+    <div class="chart-header">
+      <div>
+        <div class="chart-title" id="chartTitle">Curve of Growth</div>
+        <div class="chart-subtitle">log N (cm⁻²) → W<sub>r</sub></div>
+      </div>
+      <div class="regime-annotations" id="legendAnnot"></div>
+    </div>
+
+    <div class="chart-wrap">
+      <div id="loading-msg">Computing…</div>
+      <canvas id="cogChart"></canvas>
+    </div>
+
+    <div class="stats-row" id="statsRow">
+      <div class="stat-cell">
+        <div class="stat-label">τ₀ at log N = 13</div>
+        <div class="stat-val" id="stat-tau">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Linear→Flat transition</div>
+        <div class="stat-val" id="stat-trans">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">W<sub>r</sub> at log N = 14</div>
+        <div class="stat-val" id="stat-w14">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-label">Damping param a</div>
+        <div class="stat-val" id="stat-a">—</div>
+      </div>
+    </div>
+
+  </section>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// Transition database
+// ─────────────────────────────────────────────
+const TRANSITIONS = [
+  // H I
+  { element:'H', ion:'H I',  lambda:1215.670, f:0.41620, gamma:6.265e8, label:'H I Lyα 1215' },
+  { element:'H', ion:'H I',  lambda:1025.722, f:0.07912, gamma:1.897e8, label:'H I Lyβ 1025' },
+  { element:'H', ion:'H I',  lambda: 972.537, f:0.02901, gamma:9.732e7, label:'H I Lyγ 972'  },
+  // He II
+  { element:'He', ion:'He II', lambda:303.780, f:0.41620, gamma:1.002e10, label:'He II 303' },
+  { element:'He', ion:'He II', lambda:1640.400, f:0.12360, gamma:6.265e8,  label:'He II 1640' },
+  // C II
+  { element:'C', ion:'C II',  lambda:1334.532, f:0.12780, gamma:2.41e8, label:'C II 1334'  },
+  { element:'C', ion:'C II',  lambda:1036.337, f:0.12330, gamma:7.59e7, label:'C II 1036'  },
+  // C III
+  { element:'C', ion:'C III', lambda: 977.020, f:0.76200, gamma:1.76e9, label:'C III 977'   },
+  // C IV
+  { element:'C', ion:'C IV',  lambda:1548.202, f:0.19080, gamma:2.65e8, label:'C IV 1548'  },
+  { element:'C', ion:'C IV',  lambda:1550.781, f:0.09522, gamma:2.64e8, label:'C IV 1550'  },
+  // N II
+  { element:'N', ion:'N II',  lambda:1083.990, f:0.10300, gamma:3.41e8, label:'N II 1084'  },
+  // N III
+  { element:'N', ion:'N III', lambda: 989.799, f:0.12300, gamma:4.19e8, label:'N III 989'  },
+  // N V
+  { element:'N', ion:'N V',   lambda:1238.821, f:0.15700, gamma:3.37e8, label:'N V 1238'   },
+  { element:'N', ion:'N V',   lambda:1242.804, f:0.07770, gamma:3.35e8, label:'N V 1242'   },
+  // O I
+  { element:'O', ion:'O I',   lambda:1302.168, f:0.04887, gamma:5.65e8, label:'O I 1302'   },
+  { element:'O', ion:'O I',   lambda:1025.762, f:0.00295, gamma:7.32e6, label:'O I 1025'   },
+  // O VI
+  { element:'O', ion:'O VI',  lambda:1031.926, f:0.13290, gamma:4.16e8, label:'O VI 1031'  },
+  { element:'O', ion:'O VI',  lambda:1037.617, f:0.06598, gamma:4.09e8, label:'O VI 1037'  },
+  // Si II
+  { element:'Si', ion:'Si II', lambda:1260.422, f:1.00700, gamma:2.57e9, label:'Si II 1260' },
+  { element:'Si', ion:'Si II', lambda:1193.290, f:0.58500, gamma:7.37e8, label:'Si II 1193' },
+  { element:'Si', ion:'Si II', lambda:1190.416, f:0.29200, gamma:3.68e8, label:'Si II 1190' },
+  { element:'Si', ion:'Si II', lambda:1526.707, f:0.12700, gamma:3.86e8, label:'Si II 1526' },
+  { element:'Si', ion:'Si II', lambda:1304.370, f:0.09400, gamma:1.68e9, label:'Si II 1304' },
+  // Si III
+  { element:'Si', ion:'Si III',lambda:1206.500, f:1.66000, gamma:2.54e9, label:'Si III 1206'},
+  // Si IV
+  { element:'Si', ion:'Si IV', lambda:1393.755, f:0.52800, gamma:8.80e8, label:'Si IV 1393' },
+  { element:'Si', ion:'Si IV', lambda:1402.770, f:0.26200, gamma:8.72e8, label:'Si IV 1402' },
+  // S II
+  { element:'S', ion:'S II',  lambda:1250.584, f:0.00545, gamma:4.28e7, label:'S II 1250'  },
+  { element:'S', ion:'S II',  lambda:1253.811, f:0.01080, gamma:8.51e7, label:'S II 1253'  },
+  { element:'S', ion:'S II',  lambda:1259.519, f:0.01624, gamma:1.27e8, label:'S II 1259'  },
+  // S III
+  { element:'S', ion:'S III', lambda:1012.500, f:0.03600, gamma:1.10e8, label:'S III 1012' },
+  // Fe II
+  { element:'Fe', ion:'Fe II', lambda:1608.451, f:0.05800, gamma:3.84e7, label:'Fe II 1608' },
+  { element:'Fe', ion:'Fe II', lambda:2344.213, f:0.11420, gamma:1.53e8, label:'Fe II 2344' },
+  { element:'Fe', ion:'Fe II', lambda:2374.461, f:0.03130, gamma:3.02e7, label:'Fe II 2374' },
+  { element:'Fe', ion:'Fe II', lambda:2382.764, f:0.30060, gamma:3.13e8, label:'Fe II 2382' },
+  { element:'Fe', ion:'Fe II', lambda:2586.650, f:0.06910, gamma:9.12e7, label:'Fe II 2586' },
+  { element:'Fe', ion:'Fe II', lambda:2600.173, f:0.23940, gamma:2.35e8, label:'Fe II 2600' },
+  { element:'Fe', ion:'Fe II', lambda:1144.938, f:0.08330, gamma:1.78e8, label:'Fe II 1144' },
+];
+
+// ─────────────────────────────────────────────
+// Physics
+// ─────────────────────────────────────────────
+
+// Voigt-Hjerting function approximation
+// H(a, u) normalized so that ∫H(a,u)du = sqrt(pi)
+// Here we normalize so the Gaussian core = exp(-u²) at small a
+function voigtH(a, u) {
+  const u2 = u * u;
+  const gauss = Math.exp(-u2);
+  if (a < 1e-8) return gauss;
+
+  // Damping wing contribution (accurate asymptotically):
+  // H(a,u) → a/(sqrt(pi)) * 1/u² for large u
+  // Blend: near center Gaussian dominates, wings kick in for large u
+  // Use: H ≈ exp(-u²) + [a/(sqrt(pi)*(u²+a²))] * (1 - exp(-u²))
+  // This ensures smooth transition and correct wings
+  const wingFactor = 1.0 - gauss;
+  const lorentz = a / (Math.sqrt(Math.PI) * (u2 + a * a));
+  return gauss + lorentz * wingFactor;
+}
+
+// tau_0 = 1.4971e-15 * f * lambda(A) * N(cm^-2) / b(km/s)
+function tau0(f, lambda_A, N, b_kms) {
+  return 1.4971e-15 * f * lambda_A * N / b_kms;
+}
+
+// Damping parameter a = Gamma * lambda / (4 * pi * b)
+function dampingA(gamma, lambda_A, b_kms) {
+  const lambda_cm = lambda_A * 1e-8;
+  const b_cms = b_kms * 1e5;
+  return gamma * lambda_cm / (4.0 * Math.PI * b_cms);
+}
+
+// Compute Wr in Å
+function computeWr(trans, N_cm2, b_kms) {
+  const { lambda, f, gamma } = trans;
+  const t0 = tau0(f, lambda, N_cm2, b_kms);
+  const a  = dampingA(gamma, lambda, b_kms);
+
+  // Integration range
+  // For linear: need ~5 Doppler widths
+  // For flat: flat top extends to ~sqrt(ln(t0))
+  // For damped: wings at u ~ sqrt(t0 * a / sqrt(pi))
+  const u_flat = t0 > 1 ? Math.sqrt(Math.log(t0)) + 3 : 5;
+  const u_wing = a > 1e-6 && t0 > 10 ? Math.sqrt(t0 * a / Math.sqrt(Math.PI)) * 2 : 0;
+  const u_max = Math.max(u_flat, u_wing, 8);
+
+  // Adaptive step size
+  const n = Math.min(4000, Math.max(500, Math.ceil(u_max * 200)));
+  const du = u_max / n;
+
+  let integral = 0;
+  for (let i = 0; i < n; i++) {
+    const u = (i + 0.5) * du;
+    const tau_u = t0 * voigtH(a, u);
+    integral += (1.0 - Math.exp(-tau_u));
+  }
+  integral *= 2.0 * du; // symmetric
+
+  // Wr in Å
+  const c_kms = 2.998e5;
+  return (lambda * b_kms / c_kms) * integral;
+}
+
+// Build full COG curve: returns {logN[], Wr_mA[]}
+function buildCOG(trans, b_kms) {
+  const logN_arr = [];
+  const Wr_arr   = [];
+  for (let lN = 10.0; lN <= 22.0; lN += 0.1) {
+    const N = Math.pow(10, lN);
+    const Wr = computeWr(trans, N, b_kms);
+    logN_arr.push(parseFloat(lN.toFixed(1)));
+    Wr_arr.push(Wr * 1000); // mÅ
+  }
+  return { logN: logN_arr, Wr: Wr_arr };
+}
+
+// ─────────────────────────────────────────────
+// UI state
+// ─────────────────────────────────────────────
+let currentTrans = null;
+let cogChart = null;
+
+const B_MULTI  = [10, 30, 100];
+const B_COLORS = ['#ab47bc', '#4fc3f7', '#ffa726'];
+const B_LABELS = ['b = 10 km/s', 'b = 30 km/s', 'b = 100 km/s'];
+
+function getUnits() { return document.getElementById('unitSelect').value; }
+
+function convertWr(wr_mA, trans, b_kms) {
+  const u = getUnits();
+  if (u === 'mA') return wr_mA;
+  if (u === 'A')  return wr_mA / 1000;
+  // velocity: W_v = W_λ * c / λ
+  return (wr_mA / 1000) / trans.lambda * 2.998e5;
+}
+
+function unitLabel() {
+  const u = getUnits();
+  if (u === 'mA')  return 'Wᵣ (mÅ)';
+  if (u === 'A')   return 'Wᵣ (Å)';
+  return 'Wᵣ (km s⁻¹)';
+}
+
+// Populate transition dropdown
+function populateTransitions(filterEl) {
+  const sel = document.getElementById('transitionSelect');
+  sel.innerHTML = '';
+  const filtered = filterEl === 'all'
+    ? TRANSITIONS
+    : TRANSITIONS.filter(t => t.element === filterEl);
+  filtered.forEach((t, i) => {
+    const opt = document.createElement('option');
+    opt.value = TRANSITIONS.indexOf(t);
+    opt.textContent = `${t.label}`;
+    sel.appendChild(opt);
+  });
+  sel.selectedIndex = 0;
+}
+
+function getSelectedTrans() {
+  const idx = document.getElementById('transitionSelect').value;
+  return TRANSITIONS[idx];
+}
+
+function updateTransInfo(trans, b_kms) {
+  document.getElementById('ti-lambda').textContent = `${trans.lambda.toFixed(3)} Å`;
+  document.getElementById('ti-f').textContent      = trans.f.toFixed(5);
+  document.getElementById('ti-gamma').textContent  = trans.gamma.toExponential(2);
+  const a = dampingA(trans.gamma, trans.lambda, b_kms);
+  document.getElementById('ti-a').textContent      = a.toExponential(2);
+}
+
+function updateStats(trans, b_kms) {
+  // tau0 at logN = 13
+  const N13 = 1e13;
+  const t0_13 = tau0(trans.f, trans.lambda, N13, b_kms);
+  document.getElementById('stat-tau').textContent = t0_13.toExponential(2);
+
+  // Linear→flat transition: tau0 ~ 1 → N ~ 1/(1.4971e-15 * f * lambda / b)
+  const N_trans = b_kms / (1.4971e-15 * trans.f * trans.lambda);
+  document.getElementById('stat-trans').textContent = `log N ≈ ${Math.log10(N_trans).toFixed(1)}`;
+
+  // W at logN=14
+  const Wr_14 = computeWr(trans, 1e14, b_kms) * 1000;
+  const u = getUnits();
+  const Wr_14_conv = convertWr(Wr_14, trans, b_kms);
+  document.getElementById('stat-w14').textContent = Wr_14_conv.toFixed(3) + ' ' + (u==='mA'?'mÅ':u==='A'?'Å':'km/s');
+
+  // Damping a
+  const a = dampingA(trans.gamma, trans.lambda, b_kms);
+  document.getElementById('stat-a').textContent = a.toExponential(3);
+}
+
+function drawChart(trans, b_kms, showMultiB) {
+  document.getElementById('loading-msg').style.display = 'flex';
+
+  setTimeout(() => {
+    const ctx = document.getElementById('cogChart').getContext('2d');
+    if (cogChart) cogChart.destroy();
+
+    const datasets = [];
+
+    if (showMultiB) {
+      B_MULTI.forEach((b, bi) => {
+        const { logN, Wr } = buildCOG(trans, b);
+        const Wr_conv = Wr.map(w => convertWr(w, trans, b));
+        datasets.push({
+          label: B_LABELS[bi],
+          data: logN.map((x, i) => ({ x, y: Wr_conv[i] })),
+          borderColor: B_COLORS[bi],
+          backgroundColor: 'transparent',
+          borderWidth: b === b_kms ? 2.5 : 1.5,
+          pointRadius: 0,
+          tension: 0.2,
+          borderDash: b === b_kms ? [] : [4, 3],
+        });
+      });
+    } else {
+      const { logN, Wr } = buildCOG(trans, b_kms);
+      const Wr_conv = Wr.map(w => convertWr(w, trans, b_kms));
+      datasets.push({
+        label: `b = ${b_kms} km/s`,
+        data: logN.map((x, i) => ({ x, y: Wr_conv[i] })),
+        borderColor: '#4fc3f7',
+        backgroundColor: 'transparent',
+        borderWidth: 2.5,
+        pointRadius: 0,
+        tension: 0.2,
+      });
+    }
+
+    cogChart = new Chart(ctx, {
+      type: 'line',
+      data: { datasets },
+      options: {
+        animation: { duration: 300 },
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'linear',
+            title: {
+              display: true,
+              text: 'log N (cm⁻²)',
+              color: '#6b82a8',
+              font: { family: "'Space Mono', monospace", size: 12 }
+            },
+            min: 10, max: 22,
+            ticks: {
+              color: '#6b82a8',
+              font: { family: "'Space Mono', monospace", size: 10 },
+              stepSize: 2,
+            },
+            grid: { color: 'rgba(79,195,247,0.06)' },
+            border: { color: 'rgba(79,195,247,0.2)' }
+          },
+          y: {
+            type: 'logarithmic',
+            title: {
+              display: true,
+              text: unitLabel(),
+              color: '#6b82a8',
+              font: { family: "'Space Mono', monospace", size: 12 }
+            },
+            min: 1e-4,
+            ticks: {
+              color: '#6b82a8',
+              font: { family: "'Space Mono', monospace", size: 10 },
+              callback: v => {
+                const exp = Math.round(Math.log10(v));
+                if (Math.abs(Math.log10(v) - exp) < 0.01) return `10^${exp}`;
+                return null;
+              }
+            },
+            grid: { color: 'rgba(79,195,247,0.06)' },
+            border: { color: 'rgba(79,195,247,0.2)' }
+          }
+        },
+        plugins: {
+          legend: {
+            display: showMultiB,
+            labels: {
+              color: '#c8d8f0',
+              font: { family: "'Space Mono', monospace", size: 10 },
+              boxWidth: 20,
+              padding: 16,
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(13,21,38,0.95)',
+            borderColor: 'rgba(79,195,247,0.3)',
+            borderWidth: 1,
+            titleColor: '#4fc3f7',
+            bodyColor: '#c8d8f0',
+            titleFont: { family: "'Space Mono', monospace", size: 11 },
+            bodyFont: { family: "'Space Mono', monospace", size: 10 },
+            callbacks: {
+              title: items => `log N = ${items[0].parsed.x.toFixed(1)}`,
+              label: item => {
+                const u = getUnits();
+                const val = item.parsed.y;
+                const uStr = u==='mA'?'mÅ':u==='A'?'Å':'km/s';
+                return ` ${item.dataset.label}: Wᵣ = ${val.toFixed(3)} ${uStr}`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById('loading-msg').style.display = 'none';
+  }, 10);
+}
+
+function updateAll() {
+  const trans  = getSelectedTrans();
+  const b_kms  = parseInt(document.getElementById('bParam').value);
+  const multiB = document.getElementById('multiB').checked;
+  if (!trans) return;
+
+  currentTrans = trans;
+  document.getElementById('chartTitle').textContent = `${trans.label}  ·  λ ${trans.lambda.toFixed(1)} Å`;
+  updateTransInfo(trans, b_kms);
+  updateStats(trans, b_kms);
+  drawChart(trans, b_kms, multiB);
+}
+
+// ─────────────────────────────────────────────
+// Event listeners
+// ─────────────────────────────────────────────
+document.getElementById('elementFilter').addEventListener('change', function() {
+  populateTransitions(this.value);
+  updateAll();
+});
+
+document.getElementById('transitionSelect').addEventListener('change', updateAll);
+
+document.getElementById('bParam').addEventListener('input', function() {
+  document.getElementById('bVal').textContent = this.value;
+  updateAll();
+});
+
+document.getElementById('multiB').addEventListener('change', updateAll);
+document.getElementById('unitSelect').addEventListener('change', updateAll);
+
+// ─────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────
+populateTransitions('all');
+updateAll();
+</script>
+</body>
+</html>

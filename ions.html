@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ion Reference Table — CGM Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070b14;
+    --bg2: #0d1526;
+    --bg3: #121e35;
+    --accent: #4fc3f7;
+    --accent2: #00e5ff;
+    --gold: #ffa726;
+    --green: #66bb6a;
+    --red: #ef5350;
+    --purple: #ab47bc;
+    --text: #c8d8f0;
+    --text-dim: #6b82a8;
+    --border: rgba(79, 195, 247, 0.15);
+    --glow: 0 0 20px rgba(79, 195, 247, 0.15);
+
+    /* Ion charge state color scale */
+    --c0: #c8d8f0;   /* neutral */
+    --c1: #4fc3f7;   /* +1 */
+    --c2: #26c6da;   /* +2 */
+    --c3: #66bb6a;   /* +3 */
+    --c4: #ffa726;   /* +4 */
+    --c5: #ef5350;   /* +5 */
+    --c6: #ab47bc;   /* +6+ */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+  }
+
+  nav {
+    position: sticky;
+    top: 0; z-index: 100;
+    padding: 1rem 2rem;
+    background: rgba(7, 11, 20, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .nav-logo {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--accent);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+  }
+
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover, .nav-links a.active { color: var(--accent); }
+
+  .page-header {
+    padding: 2.5rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .page-header h1 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+  }
+
+  .page-header p {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
+  /* Filter bar */
+  .filter-bar {
+    padding: 1rem 2rem;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .element-buttons {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .el-btn {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.78rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+
+  .el-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .el-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  .search-input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 2px;
+    outline: none;
+    width: 200px;
+    transition: border-color 0.2s;
+  }
+
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-dim); }
+
+  /* Color legend */
+  .legend-bar {
+    padding: 0.75rem 2rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* Main content */
+  .content { padding: 1.5rem 2rem 4rem; }
+
+  /* Element block */
+  .element-block {
+    margin-bottom: 2.5rem;
+  }
+
+  .element-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .element-symbol {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .element-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .element-Z {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  /* Ion table */
+  .ion-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  .ion-table th {
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    white-space: nowrap;
+  }
+
+  .ion-table td {
+    padding: 0.65rem 0.8rem;
+    border-bottom: 1px solid rgba(79,195,247,0.06);
+    vertical-align: top;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+  }
+
+  .ion-table tr:hover td {
+    background: rgba(79,195,247,0.04);
+  }
+
+  .ion-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ion-charge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .ion-name {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .ie-value {
+    color: var(--gold);
+  }
+
+  .ie-kJmol {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    display: block;
+    margin-top: 0.15rem;
+  }
+
+  .ie-Ryd {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    display: block;
+  }
+
+  .transitions-cell {
+    color: var(--text);
+  }
+
+  .trans-line {
+    display: inline-block;
+    background: var(--bg3);
+    border: 1px solid rgba(79,195,247,0.12);
+    border-radius: 2px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.75rem;
+    margin: 0.1rem 0.15rem 0.1rem 0;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .trans-line .f-val {
+    color: var(--text-dim);
+    font-size: 0.7rem;
+  }
+
+  .notes-cell {
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    max-width: 200px;
+  }
+
+  /* IE bar visualization */
+  .ie-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ie-bar {
+    height: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    min-width: 2px;
+    opacity: 0.6;
+  }
+
+  /* No results */
+  .no-results {
+    padding: 3rem 0;
+    text-align: center;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.85rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .ion-table th:nth-child(5),
+    .ion-table td:nth-child(5) { display: none; }
+  }
+  @media (max-width: 700px) {
+    .ion-table th:nth-child(4),
+    .ion-table td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">ions.github.io</a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="cog.html">Curve of Growth</a></li>
+    <li><a href="ions.html" class="active">Ion Table</a></li>
+  </ul>
+</nav>
+
+<div class="page-header">
+  <h1>Ion Reference Table</h1>
+  <p>Ionization energies and key UV absorption transitions for CGM-relevant ions</p>
+</div>
+
+<div class="filter-bar">
+  <span class="filter-label">Element:</span>
+  <div class="element-buttons" id="elementBtns">
+    <button class="el-btn active" data-el="all">All</button>
+    <button class="el-btn" data-el="H">H</button>
+    <button class="el-btn" data-el="He">He</button>
+    <button class="el-btn" data-el="C">C</button>
+    <button class="el-btn" data-el="N">N</button>
+    <button class="el-btn" data-el="O">O</button>
+    <button class="el-btn" data-el="Si">Si</button>
+    <button class="el-btn" data-el="S">S</button>
+    <button class="el-btn" data-el="Fe">Fe</button>
+  </div>
+  <input class="search-input" id="searchInput" type="text" placeholder="Search ion or λ…">
+</div>
+
+<div class="legend-bar">
+  <span class="filter-label">Charge state:</span>
+  <div class="legend-item"><div class="legend-dot" style="background:#c8d8f0"></div>Neutral (0)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4fc3f7"></div>+1</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#26c6da"></div>+2</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#66bb6a"></div>+3</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffa726"></div>+4</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ef5350"></div>+5</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ab47bc"></div>+6</div>
+</div>
+
+<div class="content" id="mainContent"></div>
+
+<script>
+// ─────────────────────────────────────────────
+// Ion database
+// ─────────────────────────────────────────────
+// ie_eV: ionization energy to REMOVE this electron (to go to next ion state)
+// ie_to: energy needed to form this ion (i.e. IE of previous ion state)
+// For clarity: ie_eV here means the energy to IONIZE this species
+// transitions: UV lines observable in CGM spectra
+
+const IONS = [
+  // ═══ HYDROGEN (Z=1) ═══
+  {
+    element: 'H', Z: 1,
+    ions: [
+      {
+        name: 'H I', charge: 0, roman: 'I',
+        ie_eV: 13.598,   // to become H II
+        form_eV: 0,      // formed by recombination
+        transitions: [
+          { lambda: 1215.670, f: 0.4162,  note: 'Lyα' },
+          { lambda: 1025.722, f: 0.07912, note: 'Lyβ' },
+          { lambda:  972.537, f: 0.02901, note: 'Lyγ' },
+          { lambda:  949.743, f: 0.01395, note: 'Lyδ' },
+        ],
+        notes: 'Most common CGM tracer. DLAs at log N > 20.3.'
+      },
+      {
+        name: 'H II', charge: 1, roman: 'II',
+        ie_eV: null,
+        form_eV: 13.598,
+        transitions: [],
+        notes: 'Fully ionized; no UV lines. Warm/hot CGM.'
+      },
+    ]
+  },
+
+  // ═══ HELIUM (Z=2) ═══
+  {
+    element: 'He', Z: 2,
+    ions: [
+      {
+        name: 'He I', charge: 0, roman: 'I',
+        ie_eV: 24.587,
+        form_eV: 0,
+        transitions: [
+          { lambda: 584.334, f: 0.2762, note: 'EUV' },
+          { lambda: 10830.0, f: 0.5390, note: 'IR triplet' },
+        ],
+        notes: 'EUV line; difficult to observe. IR 10830 Å in absorption.'
+      },
+      {
+        name: 'He II', charge: 1, roman: 'II',
+        ie_eV: 54.418,
+        form_eV: 24.587,
+        transitions: [
+          { lambda:  303.780, f: 0.4162, note: 'Lyα He II (EUV)' },
+          { lambda: 1640.400, f: 0.1237, note: 'Balmer-α He II' },
+        ],
+        notes: 'Probes warm-hot 10⁵ K gas. 303 Å in EUV; 1640 Å observed with COS.'
+      },
+      {
+        name: 'He III', charge: 2, roman: 'III',
+        ie_eV: null,
+        form_eV: 54.418,
+        transitions: [],
+        notes: 'Fully stripped. Hot coronal gas, T ≳ 10⁶ K.'
+      },
+    ]
+  },
+
+  // ═══ CARBON (Z=6) ═══
+  {
+    element: 'C', Z: 6,
+    ions: [
+      {
+        name: 'C I', charge: 0, roman: 'I',
+        ie_eV: 11.260,
+        form_eV: 0,
+        transitions: [
+          { lambda: 1560.310, f: 0.0775, note: '' },
+          { lambda: 1656.928, f: 0.1492, note: '' },
+        ],
+        notes: 'Cold/neutral gas tracer. Rare in CGM.'
+      },
+      {
+        name: 'C II', charge: 1, roman: 'II',
+        ie_eV: 24.383,
+        form_eV: 11.260,
+        transitions: [
+          { lambda: 1334.532, f: 0.12780, note: 'strongest' },
+          { lambda: 1036.337, f: 0.12330, note: '' },
+        ],
+        notes: 'Traces cool photoionized CGM (T ~ 10⁴ K).'
+      },
+      {
+        name: 'C III', charge: 2, roman: 'III',
+        ie_eV: 47.888,
+        form_eV: 24.383,
+        transitions: [
+          { lambda: 977.020, f: 0.7620, note: 'very strong' },
+        ],
+        notes: 'Intermediate ionization. log T ~ 4.5–5. COS FUV.'
+      },
+      {
+        name: 'C IV', charge: 3, roman: 'IV',
+        ie_eV: 64.494,
+        form_eV: 47.888,
+        transitions: [
+          { lambda: 1548.202, f: 0.19080, note: 'doublet r' },
+          { lambda: 1550.781, f: 0.09522, note: 'doublet b' },
+        ],
+        notes: 'Warm photoionized or collisionally ionized gas. Widely observed.'
+      },
+      {
+        name: 'C V', charge: 4, roman: 'V',
+        ie_eV: 392.09,
+        form_eV: 64.494,
+        transitions: [],
+        notes: 'X-ray ion. T ~ 10⁵·⁹ K. Not UV-accessible.'
+      },
+      {
+        name: 'C VI', charge: 5, roman: 'VI',
+        ie_eV: 489.99,
+        form_eV: 392.09,
+        transitions: [
+          { lambda: 33.736, f: 0.4162, note: 'X-ray Lyα' },
+        ],
+        notes: 'Hot gas (T ~ 10⁶·⁵ K). X-ray only.'
+      },
+    ]
+  },
+
+  // ═══ NITROGEN (Z=7) ═══
+  {
+    element: 'N', Z: 7,
+    ions: [
+      {
+        name: 'N I', charge: 0, roman: 'I',
+        ie_eV: 14.534,
+        form_eV: 0,
+        transitions: [
+          { lambda: 1199.550, f: 0.13300, note: '' },
+          { lambda: 1200.223, f: 0.08840, note: '' },
+          { lambda: 1200.710, f: 0.04420, note: '' },
+        ],
+        notes: 'Cold/neutral gas. Rare in CGM; seen in DLAs.'
+      },
+      {
+        name: 'N II', charge: 1, roman: 'II',
+        ie_eV: 29.601,
+        form_eV: 14.534,
+        transitions: [
+          { lambda: 1083.990, f: 0.10300, note: '' },
+        ],
+        notes: 'Low-ionization tracer. COS wavelength range.'
+      },
+      {
+        name: 'N III', charge: 2, roman: 'III',
+        ie_eV: 47.449,
+        form_eV: 29.601,
+        transitions: [
+          { lambda: 989.799, f: 0.12300, note: '' },
+        ],
+        notes: 'Intermediate; probes UV background-photoionized gas.'
+      },
+      {
+        name: 'N IV', charge: 3, roman: 'IV',
+        ie_eV: 77.474,
+        form_eV: 47.449,
+        transitions: [
+          { lambda: 765.148, f: 0.0780, note: '' },
+        ],
+        notes: 'EUV region; requires large redshift for COS.'
+      },
+      {
+        name: 'N V', charge: 4, roman: 'V',
+        ie_eV: 97.890,
+        form_eV: 77.474,
+        transitions: [
+          { lambda: 1238.821, f: 0.15700, note: 'doublet r' },
+          { lambda: 1242.804, f: 0.07770, note: 'doublet b' },
+        ],
+        notes: 'Warm collisionally ionized gas. T ~ 10⁵·²–10⁵·⁴ K.'
+      },
+      {
+        name: 'N VI', charge: 5, roman: 'VI',
+        ie_eV: 552.07,
+        form_eV: 97.890,
+        transitions: [],
+        notes: 'X-ray ion.'
+      },
+    ]
+  },
+
+  // ═══ OXYGEN (Z=8) ═══
+  {
+    element: 'O', Z: 8,
+    ions: [
+      {
+        name: 'O I', charge: 0, roman: 'I',
+        ie_eV: 13.618,
+        form_eV: 0,
+        transitions: [
+          { lambda: 1302.168, f: 0.04887, note: '' },
+          { lambda: 1025.762, f: 0.00295, note: '' },
+          { lambda:  988.578, f: 0.00261, note: '' },
+        ],
+        notes: 'Neutral oxygen. Tracks H I. IE nearly same as H.'
+      },
+      {
+        name: 'O II', charge: 1, roman: 'II',
+        ie_eV: 35.121,
+        form_eV: 13.618,
+        transitions: [
+          { lambda: 832.757, f: 0.0104, note: '' },
+          { lambda: 834.466, f: 0.0130, note: '' },
+        ],
+        notes: 'EUV/FUV; requires z > 0.1 for COS.'
+      },
+      {
+        name: 'O III', charge: 2, roman: 'III',
+        ie_eV: 54.936,
+        form_eV: 35.121,
+        transitions: [
+          { lambda: 702.332, f: 0.143, note: '' },
+        ],
+        notes: 'EUV; z > 0.5 needed for HST access.'
+      },
+      {
+        name: 'O IV', charge: 3, roman: 'IV',
+        ie_eV: 77.413,
+        form_eV: 54.936,
+        transitions: [
+          { lambda: 787.711, f: 0.110, note: '' },
+        ],
+        notes: 'EUV; difficult to observe.'
+      },
+      {
+        name: 'O V', charge: 4, roman: 'V',
+        ie_eV: 113.899,
+        form_eV: 77.413,
+        transitions: [
+          { lambda: 629.730, f: 0.510, note: 'EUV' },
+          { lambda: 1371.296, f: 0.00164, note: 'weak FUV' },
+        ],
+        notes: 'Warm-hot transition. 629 Å EUV; 1371 Å very weak.'
+      },
+      {
+        name: 'O VI', charge: 5, roman: 'VI',
+        ie_eV: 138.119,
+        form_eV: 113.899,
+        transitions: [
+          { lambda: 1031.926, f: 0.13290, note: 'doublet r' },
+          { lambda: 1037.617, f: 0.06598, note: 'doublet b' },
+        ],
+        notes: 'Key warm-hot CGM tracer (T ~ 10⁵·⁵ K). Widely detected.'
+      },
+      {
+        name: 'O VII', charge: 6, roman: 'VII',
+        ie_eV: 739.32,
+        form_eV: 138.119,
+        transitions: [
+          { lambda: 21.602, f: 0.696, note: 'X-ray Kα' },
+        ],
+        notes: 'Hot CGM/WHIM (T ~ 10⁶ K). X-ray absorption/emission.'
+      },
+      {
+        name: 'O VIII', charge: 7, roman: 'VIII',
+        ie_eV: 871.41,
+        form_eV: 739.32,
+        transitions: [
+          { lambda: 18.969, f: 0.416, note: 'X-ray Lyα' },
+        ],
+        notes: 'Very hot gas (T ~ 10⁶·⁵ K). WHIM probe.'
+      },
+    ]
+  },
+
+  // ═══ SILICON (Z=14) ═══
+  {
+    element: 'Si', Z: 14,
+    ions: [
+      {
+        name: 'Si I', charge: 0, roman: 'I',
+        ie_eV: 8.151,
+        form_eV: 0,
+        transitions: [
+          { lambda: 1526.707, f: 0.133, note: '' },
+        ],
+        notes: 'Neutral silicon. Very rare in CGM.'
+      },
+      {
+        name: 'Si II', charge: 1, roman: 'II',
+        ie_eV: 16.346,
+        form_eV: 8.151,
+        transitions: [
+          { lambda: 1260.422, f: 1.0070, note: 'strongest' },
+          { lambda: 1193.290, f: 0.5850, note: '' },
+          { lambda: 1190.416, f: 0.2920, note: '' },
+          { lambda: 1526.707, f: 0.1270, note: '' },
+          { lambda: 1304.370, f: 0.0940, note: '' },
+        ],
+        notes: 'Cool photoionized CGM tracer. Many strong lines.'
+      },
+      {
+        name: 'Si III', charge: 2, roman: 'III',
+        ie_eV: 33.493,
+        form_eV: 16.346,
+        transitions: [
+          { lambda: 1206.500, f: 1.6600, note: 'very strong' },
+        ],
+        notes: 'Very strong line. Intermediate ionization CGM.'
+      },
+      {
+        name: 'Si IV', charge: 3, roman: 'IV',
+        ie_eV: 45.141,
+        form_eV: 33.493,
+        transitions: [
+          { lambda: 1393.755, f: 0.5280, note: 'doublet r' },
+          { lambda: 1402.770, f: 0.2620, note: 'doublet b' },
+        ],
+        notes: 'High-ionization doublet. Widely observed with COS/STIS.'
+      },
+      {
+        name: 'Si V', charge: 4, roman: 'V',
+        ie_eV: 166.767,
+        form_eV: 45.141,
+        transitions: [],
+        notes: 'EUV/soft X-ray. Not observed in typical UV surveys.'
+      },
+    ]
+  },
+
+  // ═══ SULFUR (Z=16) ═══
+  {
+    element: 'S', Z: 16,
+    ions: [
+      {
+        name: 'S I', charge: 0, roman: 'I',
+        ie_eV: 10.360,
+        form_eV: 0,
+        transitions: [
+          { lambda: 1295.653, f: 0.00700, note: '' },
+        ],
+        notes: 'Neutral sulfur. Rare; traces cold gas.'
+      },
+      {
+        name: 'S II', charge: 1, roman: 'II',
+        ie_eV: 23.338,
+        form_eV: 10.360,
+        transitions: [
+          { lambda: 1250.584, f: 0.00545, note: '' },
+          { lambda: 1253.811, f: 0.01080, note: '' },
+          { lambda: 1259.519, f: 0.01624, note: '' },
+        ],
+        notes: 'Weak lines; low-ionization tracer.'
+      },
+      {
+        name: 'S III', charge: 2, roman: 'III',
+        ie_eV: 34.830,
+        form_eV: 23.338,
+        transitions: [
+          { lambda: 1012.500, f: 0.0360, note: '' },
+        ],
+        notes: 'Intermediate ionization. Non-depleted onto dust.'
+      },
+      {
+        name: 'S IV', charge: 3, roman: 'IV',
+        ie_eV: 47.222,
+        form_eV: 34.830,
+        transitions: [
+          { lambda: 1062.664, f: 0.0500, note: '' },
+        ],
+        notes: 'Weakly depleted onto dust. Useful metallicity probe.'
+      },
+      {
+        name: 'S V', charge: 4, roman: 'V',
+        ie_eV: 72.568,
+        form_eV: 47.222,
+        transitions: [
+          { lambda: 786.480, f: 0.0820, note: 'EUV' },
+        ],
+        notes: 'EUV; rare CGM observation.'
+      },
+      {
+        name: 'S VI', charge: 5, roman: 'VI',
+        ie_eV: 88.053,
+        form_eV: 72.568,
+        transitions: [
+          { lambda:  933.378, f: 0.4360, note: 'doublet r' },
+          { lambda:  944.523, f: 0.2170, note: 'doublet b' },
+        ],
+        notes: 'Warm-hot CGM tracer. Probes similar phase to O VI.'
+      },
+    ]
+  },
+
+  // ═══ IRON (Z=26) ═══
+  {
+    element: 'Fe', Z: 26,
+    ions: [
+      {
+        name: 'Fe I', charge: 0, roman: 'I',
+        ie_eV: 7.902,
+        form_eV: 0,
+        transitions: [
+          { lambda: 2484.0, f: 0.0070, note: '' },
+        ],
+        notes: 'Neutral iron. Extremely rare in CGM.'
+      },
+      {
+        name: 'Fe II', charge: 1, roman: 'II',
+        ie_eV: 16.188,
+        form_eV: 7.902,
+        transitions: [
+          { lambda: 1144.938, f: 0.0830, note: '' },
+          { lambda: 1608.451, f: 0.0580, note: '' },
+          { lambda: 2344.213, f: 0.1142, note: '' },
+          { lambda: 2374.461, f: 0.0313, note: '' },
+          { lambda: 2382.764, f: 0.3006, note: 'strongest' },
+          { lambda: 2586.650, f: 0.0691, note: '' },
+          { lambda: 2600.173, f: 0.2394, note: '' },
+        ],
+        notes: 'Many UV lines. Depletes onto dust. DLA/sub-DLA tracer.'
+      },
+      {
+        name: 'Fe III', charge: 2, roman: 'III',
+        ie_eV: 30.651,
+        form_eV: 16.188,
+        transitions: [
+          { lambda: 1122.524, f: 0.0559, note: '' },
+        ],
+        notes: 'Intermediate-low ionization iron.'
+      },
+      {
+        name: 'Fe IV', charge: 3, roman: 'IV',
+        ie_eV: 54.910,
+        form_eV: 30.651,
+        transitions: [],
+        notes: 'EUV; rarely observed.'
+      },
+      {
+        name: 'Fe V', charge: 4, roman: 'V',
+        ie_eV: 75.000,
+        form_eV: 54.910,
+        transitions: [],
+        notes: 'EUV/soft X-ray region.'
+      },
+      {
+        name: 'Fe VI', charge: 5, roman: 'VI',
+        ie_eV: 99.100,
+        form_eV: 75.000,
+        transitions: [],
+        notes: 'Soft X-ray.'
+      },
+      {
+        name: 'Fe X', charge: 9, roman: 'X',
+        ie_eV: 262.1,
+        form_eV: 233.6,
+        transitions: [
+          { lambda: 174.531, f: 0.0580, note: 'EUV/soft X-ray' },
+        ],
+        notes: 'Hot coronal gas (T ~ 10⁶ K). Solar corona diagnostic.'
+      },
+    ]
+  },
+];
+
+// ─────────────────────────────────────────────
+// Charge state → color
+// ─────────────────────────────────────────────
+const CHARGE_COLORS = ['#c8d8f0','#4fc3f7','#26c6da','#66bb6a','#ffa726','#ef5350','#ab47bc'];
+function chargeColor(charge) {
+  return CHARGE_COLORS[Math.min(charge, CHARGE_COLORS.length - 1)];
+}
+
+// ─────────────────────────────────────────────
+// Render
+// ─────────────────────────────────────────────
+const MAX_IE = 900; // for bar scaling
+
+function renderIonRow(ion) {
+  const color = chargeColor(ion.charge);
+  const ie_str = ion.ie_eV != null
+    ? `<span class="ie-value">${ion.ie_eV.toFixed(3)}</span>
+       <span class="ie-kJmol">${(ion.ie_eV * 96.485).toFixed(1)} kJ/mol</span>
+       <span class="ie-Ryd">${(ion.ie_eV / 13.6057).toFixed(3)} Ry</span>`
+    : `<span style="color:var(--text-dim)">—</span><span class="ie-kJmol">fully ionized</span>`;
+
+  const form_str = ion.form_eV != null
+    ? `${ion.form_eV.toFixed(3)} eV`
+    : `0 eV`;
+
+  // IE bar
+  const barW = ion.ie_eV != null ? Math.max(2, (ion.ie_eV / MAX_IE) * 120) : 0;
+
+  const trans_html = ion.transitions.length > 0
+    ? ion.transitions.map(t =>
+        `<span class="trans-line">${t.lambda.toFixed(1)} Å <span class="f-val">f=${t.f.toFixed(4)}</span>${t.note ? ' <span style="color:var(--gold)">'+t.note+'</span>' : ''}</span>`
+      ).join('')
+    : `<span style="color:var(--text-dim);font-size:0.75rem">No UV lines</span>`;
+
+  return `
+    <tr class="ion-row" data-ion="${ion.name.toLowerCase()}">
+      <td>
+        <div class="ion-name-cell">
+          <div class="ion-charge-dot" style="background:${color}"></div>
+          <span class="ion-name" style="color:${color}">${ion.name}</span>
+        </div>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:0.2rem;margin-left:1.1rem">+${ion.charge}</div>
+      </td>
+      <td>
+        ${ie_str}
+        ${ion.ie_eV != null ? `<div class="ie-bar-wrap" style="margin-top:0.4rem"><div class="ie-bar" style="width:${barW}px;background:${color}"></div></div>` : ''}
+      </td>
+      <td style="color:var(--text-dim);font-size:0.82rem">${form_str}</td>
+      <td>${trans_html}</td>
+      <td class="notes-cell">${ion.notes}</td>
+    </tr>`;
+}
+
+function renderElement(elData) {
+  const rows = elData.ions.map(renderIonRow).join('');
+  return `
+    <div class="element-block" data-element="${elData.element}">
+      <div class="element-header">
+        <span class="element-symbol">${elData.element}</span>
+        <span class="element-name">${elementName(elData.element)}</span>
+        <span class="element-Z">Z = ${elData.Z}</span>
+      </div>
+      <table class="ion-table">
+        <thead>
+          <tr>
+            <th style="width:100px">Ion</th>
+            <th style="width:160px">IE (eV) → next state</th>
+            <th style="width:120px">Formation IE</th>
+            <th>Key UV transitions (λ_rest, f-value)</th>
+            <th style="width:180px">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function elementName(sym) {
+  const names = { H:'Hydrogen', He:'Helium', C:'Carbon', N:'Nitrogen',
+                  O:'Oxygen', Si:'Silicon', S:'Sulfur', Fe:'Iron' };
+  return names[sym] || sym;
+}
+
+function renderAll(filterEl, searchTerm) {
+  const content = document.getElementById('mainContent');
+  const st = (searchTerm || '').toLowerCase();
+
+  let html = '';
+  let hasAny = false;
+
+  for (const elData of IONS) {
+    if (filterEl !== 'all' && elData.element !== filterEl) continue;
+
+    // Filter ions by search
+    const filteredIons = elData.ions.filter(ion => {
+      if (!st) return true;
+      if (ion.name.toLowerCase().includes(st)) return true;
+      if (ion.transitions.some(t => String(t.lambda).includes(st))) return true;
+      if (ion.notes.toLowerCase().includes(st)) return true;
+      return false;
+    });
+
+    if (filteredIons.length === 0) continue;
+    hasAny = true;
+
+    const rows = filteredIons.map(renderIonRow).join('');
+    html += `
+      <div class="element-block" data-element="${elData.element}">
+        <div class="element-header">
+          <span class="element-symbol">${elData.element}</span>
+          <span class="element-name">${elementName(elData.element)}</span>
+          <span class="element-Z">Z = ${elData.Z}</span>
+        </div>
+        <table class="ion-table">
+          <thead>
+            <tr>
+              <th style="width:110px">Ion</th>
+              <th style="width:175px">IE to ionize (eV)</th>
+              <th style="width:120px">Formation IE</th>
+              <th>Key UV transitions (λ_rest, f-value)</th>
+              <th style="width:200px">Notes</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  if (!hasAny) {
+    html = '<div class="no-results">No ions match your search.</div>';
+  }
+
+  content.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+// Controls
+// ─────────────────────────────────────────────
+let activeEl = 'all';
+
+document.getElementById('elementBtns').addEventListener('click', function(e) {
+  const btn = e.target.closest('.el-btn');
+  if (!btn) return;
+  document.querySelectorAll('.el-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeEl = btn.dataset.el;
+  renderAll(activeEl, document.getElementById('searchInput').value);
+});
+
+document.getElementById('searchInput').addEventListener('input', function() {
+  renderAll(activeEl, this.value);
+});
+
+// Init
+renderAll('all', '');
+</script>
+</body>
+</html>
