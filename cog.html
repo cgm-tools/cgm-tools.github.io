@@ -384,54 +384,13 @@ function populateChecks(ionVal) {
     cb.addEventListener('change', e => {
       const idx = +e.target.dataset.idx;
       e.target.checked ? checkedIdxs.add(idx) : checkedIdxs.delete(idx);
-      updateChart(); updateStats();
+      rebuildDatasets(); updateStats();
     })
   );
 }
 
 // ────────────────────────────────────────────────────
-//  DATASETS
-// ────────────────────────────────────────────────────
-function buildDatasets() {
-  const b    = +document.getElementById('bParam').value;
-  const unit = document.getElementById('unitSelect').value;
-  const mB   = document.getElementById('multiB').checked;
-  const ds   = [];
-  if (!checkedIdxs.size) return ds;
-
-  [...checkedIdxs].forEach((tIdx, ci) => {
-    const tr  = TRANSITIONS[tIdx];
-    const col = TCOLORS[ci % TCOLORS.length];
-
-    if (mB) {
-      B_MULTI.forEach((bv, bi) => {
-        const { logN, Wr } = buildCOG(tr, bv);
-        ds.push({
-          label: `${tr.label}  b=${bv}`,
-          data:  logN.map((x, k) => ({ x, y: cvt(Wr[k], tr, bv, unit) })),
-          borderColor:     B_COLORS[bi],
-          backgroundColor: 'transparent',
-          borderWidth: bv === b ? 2.5 : 1.5,
-          borderDash:  B_DASHES[bi],
-          pointRadius: 0, tension: 0.15,
-        });
-      });
-    } else {
-      const { logN, Wr } = buildCOG(tr, b);
-      ds.push({
-        label: tr.label,
-        data:  logN.map((x, k) => ({ x, y: cvt(Wr[k], tr, b, unit) })),
-        borderColor:     col,
-        backgroundColor: 'transparent',
-        borderWidth: 2.2, borderDash: [], pointRadius: 0, tension: 0.15,
-      });
-    }
-  });
-  return ds;
-}
-
-// ────────────────────────────────────────────────────
-//  CHART  — created ONCE, updated in-place for smooth animation
+//  CHART — created once, never destroyed
 // ────────────────────────────────────────────────────
 function initChart() {
   const ctx = document.getElementById('cogChart').getContext('2d');
@@ -439,7 +398,7 @@ function initChart() {
     type: 'line',
     data: { datasets: [] },
     options: {
-      animation: { duration: 200, easing: 'easeInOutQuad' },
+      animation: { duration: 50, easing: 'easeInOutQuad' },
       responsive: true,
       maintainAspectRatio: false,
       scales: {
@@ -494,29 +453,97 @@ function initChart() {
   });
 }
 
-function updateChart() {
-  const unit = document.getElementById('unitSelect').value;
-  const ds   = buildDatasets();
+// ── helper: sync title + empty state ──
+function syncMeta() {
+  const unit  = document.getElementById('unitSelect').value;
   const empty = document.getElementById('emptyState');
-
-  if (!ds.length) {
+  if (!checkedIdxs.size) {
     empty.style.display = 'flex';
+    document.getElementById('chartTitle').textContent = 'Select transitions in the sidebar';
+  } else {
+    empty.style.display = 'none';
+    const ions = [...new Set([...checkedIdxs].map(i => TRANSITIONS[i].ion))];
+    document.getElementById('chartTitle').textContent = ions.join('  +  ');
+  }
+  document.getElementById('chartUnit').textContent   = unitLbl(unit);
+  cogChart.options.scales.y.title.text               = unitLbl(unit);
+}
+
+// ── REBUILD: called when transitions added/removed or multiB toggled ──
+// Replaces dataset objects entirely but uses animation:false so there is
+// NO entrance animation — curves just appear instantly.
+function rebuildDatasets() {
+  const b    = +document.getElementById('bParam').value;
+  const unit = document.getElementById('unitSelect').value;
+  const mB   = document.getElementById('multiB').checked;
+  syncMeta();
+
+  if (!checkedIdxs.size) {
     cogChart.data.datasets = [];
     cogChart.update('none');
     return;
   }
-  empty.style.display = 'none';
 
-  const ions = [...new Set([...checkedIdxs].map(i => TRANSITIONS[i].ion))];
-  document.getElementById('chartTitle').textContent = ions.join('  +  ');
-  document.getElementById('chartUnit').textContent  = unitLbl(unit);
+  const ds = [];
+  [...checkedIdxs].forEach((tIdx, ci) => {
+    const tr  = TRANSITIONS[tIdx];
+    const col = TCOLORS[ci % TCOLORS.length];
+    if (mB) {
+      B_MULTI.forEach((bv, bi) => {
+        const { logN, Wr } = buildCOG(tr, bv);
+        ds.push({
+          label: `${tr.label}  b=${bv}`,
+          data:  logN.map((x, k) => ({ x, y: cvt(Wr[k], tr, bv, unit) })),
+          borderColor: B_COLORS[bi], backgroundColor: 'transparent',
+          borderWidth: bv === b ? 2.5 : 1.5,
+          borderDash: B_DASHES[bi], pointRadius: 0, tension: 0.15,
+          // metadata for in-place updates
+          _tIdx: tIdx, _bVal: bv, _ci: ci,
+        });
+      });
+    } else {
+      const { logN, Wr } = buildCOG(tr, b);
+      ds.push({
+        label: tr.label,
+        data:  logN.map((x, k) => ({ x, y: cvt(Wr[k], tr, b, unit) })),
+        borderColor: col, backgroundColor: 'transparent',
+        borderWidth: 2.2, borderDash: [], pointRadius: 0, tension: 0.15,
+        _tIdx: tIdx, _bVal: b, _ci: ci,
+      });
+    }
+  });
 
-  // Update y-axis label
-  cogChart.options.scales.y.title.text = unitLbl(unit);
-
-  // ↓ KEY: replace datasets in-place → smooth interpolation, no "from bottom" re-entry
   cogChart.data.datasets = ds;
-  cogChart.update({ duration: 200, easing: 'easeInOutQuad' });
+  cogChart.update('none');   // instant — no entrance animation
+}
+
+// ── UPDATE B IN-PLACE: called ONLY when the b-slider moves ──
+// Mutates existing dataset .data[k].y values so Chart.js tweens
+// smoothly between old and new positions — no re-entry animation.
+function updateBInPlace() {
+  const b    = +document.getElementById('bParam').value;
+  const unit = document.getElementById('unitSelect').value;
+  const mB   = document.getElementById('multiB').checked;
+
+  if (!cogChart.data.datasets.length) return;
+
+  cogChart.data.datasets.forEach(ds => {
+    const tr = TRANSITIONS[ds._tIdx];
+    if (!tr) return;
+
+    if (mB) {
+      // Fixed b values — only update the highlight thickness, no recompute needed
+      ds.borderWidth = ds._bVal === b ? 2.5 : 1.5;
+    } else {
+      // Recompute y-values for this transition at the new b, mutate in place
+      const { Wr } = buildCOG(tr, b);
+      ds.data.forEach((pt, k) => { pt.y = cvt(Wr[k], tr, b, unit); });
+      ds._bVal = b;
+    }
+  });
+
+  // Smooth tween between old and new y positions
+  cogChart.update();
 }
 
 // ────────────────────────────────────────────────────
@@ -555,18 +582,18 @@ document.getElementById('elementFilter').addEventListener('change', function() {
   checkedIdxs.clear();
   populateIons(this.value);
   populateChecks(document.getElementById('ionFilter').value);
-  updateChart(); updateStats();
+  rebuildDatasets(); updateStats();
 });
 document.getElementById('ionFilter').addEventListener('change', function() {
   populateChecks(this.value);
-  updateChart(); updateStats();
+  rebuildDatasets(); updateStats();
 });
 document.getElementById('bParam').addEventListener('input', function() {
   document.getElementById('bVal').textContent = this.value;
-  updateChart(); updateStats();
+  updateBInPlace(); updateStats();   // ← in-place: no entrance animation
 });
-document.getElementById('multiB').addEventListener('change', () => { updateChart(); });
-document.getElementById('unitSelect').addEventListener('change', () => { updateChart(); updateStats(); });
+document.getElementById('multiB').addEventListener('change', () => { rebuildDatasets(); });
+document.getElementById('unitSelect').addEventListener('change', () => { rebuildDatasets(); updateStats(); });
 
 // ────────────────────────────────────────────────────
 //  INIT
@@ -574,7 +601,7 @@ document.getElementById('unitSelect').addEventListener('change', () => { updateC
 initChart();
 populateIons('all');
 populateChecks(document.getElementById('ionFilter').value);
-updateChart();
+rebuildDatasets();
 updateStats();
 </script>
 </body>
