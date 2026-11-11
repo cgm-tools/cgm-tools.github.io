@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>physics.js tests</title>
+<style>body{font:13px/1.4 monospace;margin:1em} .fail{color:#b00} .pass{color:#070}</style>
+</head>
+<body>
+<h1>assets/js/physics.js regression tests</h1>
+<p>Open in a browser (or <code>chrome --headless --dump-dom tests/physics.html</code>) and look for FAIL.</p>
+<pre id="out"></pre>
+<script src="../data/lines.js"></script>
+<script src="../assets/js/physics.js"></script>
+<script src="reference_cog.js"></script>
+<script>
+(function () {
+  const P = window.CGMPhysics, out = [];
+  const byId = Object.fromEntries(window.CGM_LINES.map(l => [l.id, l]));
+  let nfail = 0, ntest = 0, worst = 0;
+  function check(name, got, want, tol) {
+    const rel = Math.abs(got - want) / Math.abs(want);
+    ntest++; worst = Math.max(worst, rel);
+    const ok = rel <= tol;
+    if (!ok) nfail++;
+    out.push(`${ok ? "PASS" : "FAIL"}  ${name}: got ${got.toExponential(5)} want ${want.toExponential(5)} (rel ${rel.toExponential(2)}, tol ${tol})`);
+  }
+
+  // 1. Voigt function spot values (exact Re w(z) from scipy.special.wofz)
+  [[1e-3, 0, 0.9988726200811509], [1e-3, 1, 0.3679650099410537], [1e-3, 3, 2.0197242455732037e-4],
+   [1e-4, 10, 5.728717561645332e-7], [0.1, 0.5, 0.7175877421575946], [0.5, 2, 0.10335882374136668],
+   [2, 3, 0.09271076642644341]]
+    .forEach(([a, u, H]) => check(`H(a=${a},u=${u})`, P.voigtH(a, u), H, 2e-3));
+
+  // 2. optically thin limit  W = (pi e^2/m_e c^2) N f lambda^2
+  ["HI_1215", "OVI_1031", "MgII_2796"].forEach(id => {
+    const l = byId[id], N = 1e9;
+    check(`linear ${id}`, P.Wlambda(l, N, 30), P.LIN_K * N * l.f * l.wave * l.wave, 2e-3);
+  });
+
+  // 3. damping limit  W = 2 dlambda_D sqrt(sqrt(pi) tau0 a)  (valid for tau0 a >> 1)
+  [["HI_1215", 22], ["MgII_2796", 21]].forEach(([id, x]) => {
+    const l = byId[id], N = Math.pow(10, x), b = 30;
+    const t0 = P.tau0(l, N, b), a = P.dampA(l, b);
+    const want = 2 * l.wave * b / P.C_KMS * Math.sqrt(Math.sqrt(Math.PI) * t0 * a);
+    check(`damped ${id} logN=${x}`, P.Wlambda(l, N, b), want, 2e-2);
+  });
+
+  // 4. full curve of growth vs independent scipy reference
+  (window.REFERENCE_COG || []).forEach(r =>
+    check(`COG ${r.id} b=${r.b} logN=${r.logN}`, P.Wlambda(byId[r.id], Math.pow(10, r.logN), r.b), r.W, 5e-3));
+
+  out.unshift(`SUMMARY: ${ntest - nfail}/${ntest} passed, worst relative error ${worst.toExponential(2)}` +
+              (window.REFERENCE_COG ? "" : "  (reference_cog.js missing!)"));
+  const el = document.getElementById("out");
+  el.innerHTML = out.map(s => `<span class="${s.startsWith("FAIL") ? "fail" : "pass"}">${s}</span>`).join("\n");
+  document.title = nfail ? `FAIL (${nfail})` : "ALL PASS";
+})();
+</script>
+</body>
+</html>
