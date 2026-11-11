@@ -1,0 +1,231 @@
+# Curated CGM line list.  This is the ONLY place to add or remove transitions.
+#
+# Columns:  element  ion(roman)  lambda_vac(A, approximate)  group  [options]
+#
+#   group   core | euv | xray | optical | ism      (used for filtering on the site)
+#   options mean   -> use the multiplet-mean entry (unresolved fine-structure
+#                     doublets, e.g. H-like ions); otherwise the J-resolved
+#                     component nearest to lambda is used
+#           V96    -> force Verner+1996 even if lambda > 911.75 A
+#
+# build_data.py looks each line up in Morton (2003) when lambda > 911.75 A and
+# in Verner, Verner & Ferland (1996) otherwise (or when Morton lacks the ion),
+# and fails if no source entry lies within 0.05 A of lambda.  All atomic data
+# (lambda, f, A, Gamma, g, E_low) come from the source files, not from here.
+
+# --- Hydrogen: Lyman series (1s - np, n = 2..10) ---------------------------
+H  I     1215.670   core  mean
+H  I     1025.722   core  mean
+H  I      972.537   core  mean
+H  I      949.743   core  mean
+H  I      937.803   core  mean
+H  I      930.748   core  mean
+H  I      926.226   core  mean
+H  I      923.150   core  mean
+H  I      920.963   core  mean
+
+# --- Helium ------------------------------------------------------------------
+He I      584.334   euv
+He I      537.030   euv
+He I      522.213   euv
+He II     303.782   euv   mean
+
+# --- Carbon ------------------------------------------------------------------
+C  I     1656.928   core
+C  I     1560.309   core
+C  I     1328.833   core
+C  I     1277.245   core
+C  I      945.191   core
+C  II    1334.532   core
+C  II    1335.708   core          # C II* (excited fine-structure level)
+C  II    1036.337   core
+C  II     903.962   euv
+C  II     903.624   euv
+C  II     687.053   euv
+C  III    977.020   core
+C  IV    1548.204   core
+C  IV    1550.781   core
+C  V       40.268   xray
+C  VI      33.736   xray  mean
+
+# --- Nitrogen ----------------------------------------------------------------
+N  I     1199.550   core
+N  I     1200.223   core
+N  I     1200.710   core
+N  I     1134.980   core
+N  I     1134.415   core
+N  I     1134.165   core
+N  II    1083.994   core
+N  II     915.613   core
+N  III    989.799   core
+N  III    685.515   euv
+N  III    763.334   euv
+N  IV     765.147   euv
+N  V     1238.821   core
+N  V     1242.804   core
+N  VI      28.787   xray
+N  VII     24.781   xray  mean
+
+# --- Oxygen ------------------------------------------------------------------
+O  I     1302.169   core
+O  I     1039.230   core
+O  I     1025.762   core
+O  I      988.773   core
+O  I      971.738   core
+O  I      950.885   core
+O  I      936.630   core
+O  II     834.465   euv
+O  II     833.330   euv
+O  II     832.758   euv
+O  III    832.929   euv
+O  III    702.337   euv
+O  III    507.388   euv
+O  IV     787.711   euv
+O  IV     608.397   euv
+O  IV     554.076   euv
+O  IV     553.329   euv
+O  V      629.732   euv
+O  VI    1031.926   core
+O  VI    1037.617   core
+O  VII     21.602   xray
+O  VIII    18.969   xray  mean
+
+# --- Neon --------------------------------------------------------------------
+Ne I      735.896   euv
+Ne II     460.728   euv
+Ne II     446.255   euv
+Ne III    489.505   euv
+Ne III    488.109   euv
+Ne IV     543.892   euv
+Ne IV     542.073   euv
+Ne IV     541.128   euv
+Ne V      568.418   euv
+Ne V      480.407   euv
+Ne VI     558.594   euv
+Ne VI     401.136   euv
+Ne VII    465.220   euv
+Ne VIII   770.409   euv
+Ne VIII   780.324   euv
+Ne IX      13.447   xray
+Ne X       12.134   xray  mean
+
+# --- Sodium ------------------------------------------------------------------
+Na I     5891.583   optical
+Na I     5897.558   optical
+Na IX     681.719   euv
+Na IX     694.146   euv
+
+# --- Magnesium ---------------------------------------------------------------
+Mg I     2852.963   core
+Mg I     2026.477   core
+Mg II    2796.354   core
+Mg II    2803.532   core
+Mg II    1239.925   core
+Mg II    1240.395   core
+Mg X      609.793   euv
+Mg X      624.941   euv
+
+# --- Aluminium ---------------------------------------------------------------
+Al II    1670.789   core
+Al III   1854.718   core
+Al III   1862.791   core
+
+# --- Silicon -----------------------------------------------------------------
+Si I     2515.073   core
+Si I     1845.521   core
+Si II    1260.422   core
+Si II    1193.290   core
+Si II    1190.416   core
+Si II    1526.707   core
+Si II    1304.370   core
+Si II    1808.013   core
+Si II    1020.699   core
+Si II     989.873   core
+Si II    1264.738   core          # Si II* (excited fine-structure level)
+Si II    1533.431   core          # Si II*
+Si III   1206.500   core
+Si IV    1393.760   core
+Si IV    1402.773   core
+Si XII    499.406   euv
+Si XII    520.665   euv
+
+# --- Phosphorus --------------------------------------------------------------
+P  II    1152.818   core
+P  II     963.801   core
+P  V     1117.977   core
+P  V     1128.008   core
+
+# --- Sulfur ------------------------------------------------------------------
+S  I     1807.311   core
+S  I     1425.030   core
+S  I     1295.653   core
+S  II    1259.518   core
+S  II    1253.805   core
+S  II    1250.578   core
+S  II     912.735   core
+S  II     765.684   euv
+S  II     764.416   euv
+S  III   1012.495   core
+S  III   1190.203   core
+S  III    698.727   euv
+S  III    677.729   euv
+S  III    724.288   euv
+S  IV    1062.664   core
+S  IV     748.393   euv
+S  IV     657.319   euv
+S  IV     744.905   euv
+S  V      786.468   euv
+S  VI     933.378   core
+S  VI     944.523   core
+
+# --- Argon -------------------------------------------------------------------
+Ar I     1048.220   core
+Ar I     1066.660   core
+Ar VIII   700.240   euv
+Ar VIII   713.810   euv
+
+# --- Calcium (absent from the Morton 2003 machine-readable table -> V96) ----
+Ca II    3934.777   optical  V96
+Ca II    3969.591   optical  V96
+
+# --- Iron-peak and other ISM/DLA metals --------------------------------------
+Ti II    3384.730   ism
+Ti II    3242.918   ism
+Ti II    3073.863   ism
+Ti II    1910.612   ism
+Ti II    1910.954   ism
+Cr II    2056.257   ism
+Cr II    2062.236   ism
+Cr II    2066.164   ism
+Mn II    2576.877   ism
+Mn II    2594.499   ism
+Mn II    2606.462   ism
+Mn II    1197.184   ism
+Fe I     2484.021   core
+Fe I     2523.608   core
+Fe I     2719.833   core
+Fe I     3021.519   core
+Fe II    2600.173   core
+Fe II    2586.650   core
+Fe II    2382.765   core
+Fe II    2374.461   core
+Fe II    2344.214   core
+Fe II    2260.780   core
+Fe II    2249.877   core
+Fe II    1608.451   core
+Fe II    1611.200   core
+Fe II    1144.938   core
+Fe II    1143.226   core
+Fe II    1125.448   core
+Fe II    1121.975   core
+Fe II    1096.877   core
+Fe II    1063.176   core
+Fe III   1122.524   core
+Fe XVII    15.015   xray
+Ni II    1370.132   ism
+Ni II    1741.553   ism
+Ni II    1709.604   ism
+Ni II    1751.916   ism
+Ni II    1454.842   ism
+Zn II    2026.137   ism
+Zn II    2062.660   ism
