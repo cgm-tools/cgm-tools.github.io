@@ -2,607 +2,128 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Curve of Growth — CGM Tools</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@200;400;600;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<style>
-  :root {
-    --bg:#070b14; --bg2:#0d1526; --bg3:#121e35;
-    --accent:#4fc3f7; --gold:#ffa726; --green:#66bb6a;
-    --red:#ef5350; --purple:#ab47bc;
-    --text:#c8d8f0; --text-dim:#6b82a8;
-    --border:rgba(79,195,247,0.15);
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-height:100vh;}
-
-  nav{position:sticky;top:0;z-index:100;padding:1rem 2rem;background:rgba(7,11,20,.9);
-    backdrop-filter:blur(12px);border-bottom:1px solid var(--border);
-    display:flex;align-items:center;justify-content:space-between;}
-  .nav-logo{font-family:'Space Mono',monospace;font-weight:700;font-size:1.1rem;
-    color:var(--accent);text-decoration:none;letter-spacing:.05em;}
-  .nav-links{display:flex;gap:2rem;list-style:none;}
-  .nav-links a{color:var(--text-dim);text-decoration:none;font-size:.9rem;font-weight:600;
-    letter-spacing:.05em;text-transform:uppercase;transition:color .2s;}
-  .nav-links a:hover,.nav-links a.active{color:var(--accent);}
-
-  .page-header{padding:2rem 2rem 1.4rem;border-bottom:1px solid var(--border);background:var(--bg2);}
-  .page-header h1{font-size:1.8rem;font-weight:800;letter-spacing:-.02em;margin-bottom:.3rem;}
-  .page-header p{color:var(--text-dim);font-size:.9rem;}
-
-  .main-layout{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 114px);}
-
-  /* Sidebar */
-  .sidebar{background:var(--bg2);border-right:1px solid var(--border);
-    padding:1.25rem;display:flex;flex-direction:column;gap:1.1rem;overflow-y:auto;}
-  .ctrl{display:flex;flex-direction:column;gap:.45rem;}
-  .lbl{font-family:'Space Mono',monospace;font-size:.63rem;letter-spacing:.12em;
-    text-transform:uppercase;color:var(--text-dim);}
-  select{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);
-    font-family:'Space Mono',monospace;font-size:.82rem;border-radius:2px;
-    padding:.45rem .7rem;outline:none;transition:border-color .2s;appearance:none;}
-  select:focus{border-color:var(--accent);}
-  select option{background:var(--bg);}
-
-  .range-row{display:flex;align-items:center;gap:.6rem;}
-  input[type=range]{flex:1;background:transparent;border:none;accent-color:var(--accent);cursor:pointer;padding:.2rem 0;}
-  .rval{font-family:'Space Mono',monospace;font-size:.82rem;color:var(--accent);min-width:55px;text-align:right;}
-
-  hr.div{border:none;border-top:1px solid var(--border);}
-
-  /* Transition checkbox list */
-  .trans-checks{display:flex;flex-direction:column;gap:.3rem;}
-  .tci{display:flex;align-items:center;gap:.5rem;padding:.38rem .6rem;
-    border:1px solid var(--border);border-radius:2px;background:var(--bg3);
-    cursor:pointer;transition:border-color .15s;}
-  .tci:hover{border-color:rgba(79,195,247,.35);}
-  .tci input[type=checkbox]{accent-color:var(--accent);cursor:pointer;width:13px;height:13px;flex-shrink:0;}
-  .tci-swatch{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
-  .tci-name{font-family:'Space Mono',monospace;font-size:.75rem;color:var(--text);}
-  .tci-f{font-size:.67rem;color:var(--text-dim);}
-
-  .toggle-row{display:flex;align-items:center;gap:.6rem;font-size:.85rem;color:var(--text);cursor:pointer;}
-  .toggle-row input[type=checkbox]{accent-color:var(--accent);cursor:pointer;}
-
-  /* Info panel */
-  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;
-    background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:.8rem;}
-  .ti-lbl{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text-dim);
-    letter-spacing:.08em;text-transform:uppercase;margin-bottom:.12rem;}
-  .ti-val{font-family:'Space Mono',monospace;font-size:.82rem;color:var(--gold);}
-
-  /* Regime box */
-  .regime-box{background:var(--bg3);border:1px solid var(--border);border-radius:2px;padding:.85rem;}
-  .regime-title{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--text-dim);
-    letter-spacing:.1em;text-transform:uppercase;margin-bottom:.6rem;}
-  .ri{display:flex;align-items:flex-start;gap:.5rem;margin-bottom:.45rem;font-size:.79rem;}
-  .rdot{width:7px;height:7px;border-radius:50%;margin-top:.28rem;flex-shrink:0;}
-  .rname{color:var(--text);font-weight:600;}
-  .reqn{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--text-dim);}
-
-  /* Chart area */
-  .chart-area{padding:1.4rem 1.75rem;display:flex;flex-direction:column;gap:1rem;}
-  .chart-header{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.5rem;}
-  .chart-title{font-size:1.05rem;font-weight:700;}
-  .chart-sub{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--text-dim);}
-  .chart-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:2px;
-    padding:1.2rem;flex:1;min-height:400px;max-height:530px;position:relative;}
-  #cogChart{width:100%!important;height:100%!important;}
-
-  .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;gap:.75rem;
-    font-family:'Space Mono',monospace;font-size:.82rem;color:var(--text-dim);}
-  .es-icon{font-size:2rem;opacity:.25;}
-
-  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));
-    gap:1px;background:var(--border);border:1px solid var(--border);}
-  .sc{background:var(--bg2);padding:.8rem 1.1rem;}
-  .sl{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--text-dim);
-    letter-spacing:.08em;text-transform:uppercase;margin-bottom:.18rem;}
-  .sv{font-family:'Space Mono',monospace;font-size:.9rem;color:var(--accent);}
-
-  @media(max-width:820px){
-    .main-layout{grid-template-columns:1fr;}
-    .sidebar{border-right:none;border-bottom:1px solid var(--border);}
-  }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Curve of Growth · CGM Tools</title>
+<meta name="description" content="Interactive curve of growth (rest-frame equivalent width vs. column density) for UV, EUV, X-ray and optical CGM absorption lines.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<link rel="stylesheet" href="assets/css/site.css">
 </head>
 <body>
+<header class="masthead">
+  <a class="brand" href="index.html">cgm-tools</a>
+  <nav aria-label="Site">
+    <a href="index.html">Home</a>
+    <a href="cog.html" aria-current="page">Curve of growth</a>
+    <a href="ions.html">Ions &amp; lines</a>
+  </nav>
+</header>
 
-<nav>
-  <a href="index.html" class="nav-logo">ions.github.io</a>
-  <ul class="nav-links">
-    <li><a href="index.html">Home</a></li>
-    <li><a href="cog.html" class="active">Curve of Growth</a></li>
-    <li><a href="ions.html">Ion Table</a></li>
-  </ul>
-</nav>
+<main>
+  <div class="titleblock">
+    <h1>Curve of Growth</h1>
+    <p class="subtitle">Rest-frame equivalent width of a single Voigt component versus column density</p>
+  </div>
 
-<div class="page-header">
-  <h1>Curve of Growth</h1>
-  <p>W<sub>r</sub> vs log N — check multiple transitions to overlay them and compare saturation</p>
-</div>
+  <div class="tool">
+    <aside class="panel" aria-label="Controls">
+      <fieldset>
+        <legend>Transitions</legend>
+        <div class="row"><input type="search" id="q" placeholder="Search ion or λ (e.g. O VI, 1548)" aria-label="Search transitions" style="width:100%"></div>
+        <div class="row"><select id="ionSel" aria-label="Ion"></select></div>
+        <ul class="translist" id="transList" aria-label="Transitions"></ul>
+        <p class="small muted" id="selInfo" style="margin:.4rem 0 0"></p>
+        <div class="chips" id="chips" aria-label="Selected transitions"></div>
+        <div class="btn-row"><button type="button" class="btn" id="clearBtn">Clear all</button></div>
+      </fieldset>
 
-<div class="main-layout">
-  <aside class="sidebar">
+      <fieldset>
+        <legend>Doppler parameter</legend>
+        <div class="row"><input type="range" id="bRange" min="1" max="150" step="0.5" value="30" aria-label="b (km/s)"></div>
+        <div class="row"><label for="bNum"><i>b</i> [km&thinsp;s<sup>−1</sup>]</label><input type="number" id="bNum" min="0.5" max="1000" step="0.5" value="30"></div>
+        <label class="check"><input type="checkbox" id="refB" checked> <span>reference curves at <i>b</i> = 10, 30, 100&nbsp;km&thinsp;s<sup>−1</sup></span></label>
+      </fieldset>
 
-    <div class="ctrl">
-      <div class="lbl">Element</div>
-      <select id="elementFilter">
-        <option value="all">All elements</option>
-        <option value="H">Hydrogen (H)</option>
-        <option value="He">Helium (He)</option>
-        <option value="C">Carbon (C)</option>
-        <option value="N">Nitrogen (N)</option>
-        <option value="Ne">Neon (Ne)</option>
-        <option value="O">Oxygen (O)</option>
-        <option value="Si">Silicon (Si)</option>
-        <option value="S">Sulfur (S)</option>
-        <option value="Fe">Iron (Fe)</option>
-      </select>
-    </div>
+      <fieldset>
+        <legend>Axes</legend>
+        <div class="row"><label for="unit"><i>W</i><sub>r</sub> in</label>
+          <select id="unit" style="width:auto">
+            <option value="mA">mÅ</option>
+            <option value="A">Å</option>
+            <option value="kms">km s⁻¹</option>
+          </select></div>
+        <div class="row"><label for="nMin">log <i>N</i></label>
+          <input type="number" id="nMin" value="10" step="0.5" min="5" max="24" aria-label="log N minimum"> to
+          <input type="number" id="nMax" value="22" step="0.5" min="6" max="25" aria-label="log N maximum"></div>
+      </fieldset>
+    </aside>
 
-    <div class="ctrl">
-      <div class="lbl">Ion</div>
-      <select id="ionFilter"></select>
-    </div>
+    <section aria-label="Figure and table">
+      <figure id="fig1">
+        <div class="fig-canvas" id="cogCanvas"></div>
+        <div class="fig-tools" id="cogTools"></div>
+        <figcaption><span class="tag">Figure 1.</span> <span id="cogCaption"></span></figcaption>
+      </figure>
 
-    <div class="ctrl">
-      <div class="lbl">Transitions — check to overlay</div>
-      <div class="trans-checks" id="transChecks"></div>
-    </div>
-
-    <hr class="div">
-
-    <div class="ctrl">
-      <div class="lbl">Doppler b (km s⁻¹)</div>
-      <div class="range-row">
-        <input type="range" id="bParam" min="1" max="150" step="1" value="30">
-        <span class="rval"><span id="bVal">30</span> km/s</span>
+      <div class="table-scroll">
+        <table class="booktabs" id="statsTable">
+          <caption><b>Table 1.</b> Line parameters at the current <i>b</i>, evaluated at
+            log&thinsp;<i>N</i> = <input type="number" id="statN" value="14" step="0.1" min="5" max="25" aria-label="log N for table" style="width:4.5em"></caption>
+          <thead>
+            <tr>
+              <th>Line</th>
+              <th class="num">λ<sub>0</sub> [Å]</th>
+              <th class="num"><i>f</i></th>
+              <th class="num">Γ [s<sup>−1</sup>]</th>
+              <th class="num"><i>a</i></th>
+              <th class="num">log&thinsp;<i>N</i>(τ<sub>0</sub>=1)</th>
+              <th class="num">τ<sub>0</sub></th>
+              <th class="num"><i>W</i><sub>r</sub> [<span class="unitlbl">mÅ</span>]</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody id="statsBody"></tbody>
+        </table>
       </div>
-    </div>
+      <div class="tablenotes" id="statsNotes"></div>
+    </section>
+  </div>
 
-    <div class="ctrl">
-      <label class="toggle-row">
-        <input type="checkbox" id="multiB" checked>
-        Show b = 10, 30, 100 km/s curves
-      </label>
-    </div>
+  <div class="article">
+    <h2>Method</h2>
+    <p>For a single absorber with a Maxwellian velocity distribution of Doppler parameter <i>b</i>, the optical depth at
+    dimensionless frequency offset $u = \Delta v / b$ is $\tau(u) = \tau_0\,H(a,u)$, where $H$ is the Voigt function,
+    normalised to $H(a,0)\to 1$ as $a\to0$:</p>
+    <div class="eq">$$\tau_0 = \frac{\sqrt{\pi}\,e^2}{m_e c}\,\frac{f\lambda_0 N}{b} = 1.4974\times10^{-15}\,
+      \frac{f\,(\lambda_0/\text{Å})\,(N/\text{cm}^{-2})}{b/\text{km s}^{-1}}, \qquad a = \frac{\Gamma \lambda_0}{4\pi b}.$$</div>
+    <p>The rest-frame equivalent width is</p>
+    <div class="eq">$$W_r = \frac{\lambda_0 b}{c}\int_{-\infty}^{\infty}\left[1-e^{-\tau_0 H(a,u)}\right]du ,$$</div>
+    <p>which has the familiar limits $W_r = (\pi e^2/m_e c^2)\,N f \lambda_0^2$ on the linear part
+    ($\tau_0 \ll 1$), $W_r \simeq 2(\lambda_0 b/c)\sqrt{\ln\tau_0}$ on the flat part, and
+    $W_r \simeq 2(\lambda_0 b/c)\,(\sqrt{\pi}\,\tau_0 a)^{1/2}$ on the damping part ($\tau_0 a \gg 1$).
+    $H(a,u)$ is evaluated with the Humlíček (1982) W4 algorithm. The integral covers the full profile: Simpson's
+    rule through the Doppler core, a logarithmic grid through the Lorentzian wings, and the analytic wing
+    contribution beyond the last grid point. Against an independent calculation (<code>scipy.special.wofz</code>
+    with adaptive quadrature) the curves agree to better than 10<sup>−4</sup> for log&thinsp;<i>N</i> = 10–22 and
+    <i>b</i> = 5–100&nbsp;km&thinsp;s<sup>−1</sup> (<a href="tests/physics.html">test page</a>).</p>
+    <p>Wavelengths, oscillator strengths and damping constants are read from
+    Morton (2003) for λ&nbsp;&gt;&nbsp;912&nbsp;Å and from Verner et al. (1996) for EUV and X-ray lines.
+    Lines without a tabulated Γ use the sum of the radiative rates out of the same upper level in the same
+    compilation, which is a lower limit and only affects the damping part. See <a href="ions.html">Ions &amp; lines</a>
+    for the full list and <a href="index.html#data">the data section</a> for citations.</p>
+  </div>
+</main>
 
-    <div class="ctrl">
-      <div class="lbl">W<sub>r</sub> units</div>
-      <select id="unitSelect">
-        <option value="mA">mÅ (milliangstroms)</option>
-        <option value="A">Å (angstroms)</option>
-        <option value="kms">km s⁻¹ (velocity)</option>
-      </select>
-    </div>
+<footer>
+  cgm-tools · atomic data: Morton (2003); Verner, Verner &amp; Ferland (1996) · <a href="https://github.com/cgm-tools/cgm-tools.github.io">source on GitHub</a>
+</footer>
 
-    <hr class="div">
-
-    <div class="info-grid">
-      <div><div class="ti-lbl">Selected lines</div><div class="ti-val" id="ti-count">—</div></div>
-      <div><div class="ti-lbl">b-parameter</div><div class="ti-val" id="ti-b">30 km/s</div></div>
-      <div><div class="ti-lbl">τ₀ at log N=13</div><div class="ti-val" id="ti-tau">—</div></div>
-      <div><div class="ti-lbl">Damping a (b=30)</div><div class="ti-val" id="ti-a">—</div></div>
-    </div>
-
-    <div class="regime-box">
-      <div class="regime-title">COG Regimes</div>
-      <div class="ri"><div class="rdot" style="background:#4fc3f7"></div>
-        <div><div class="rname">Linear (τ₀ ≪ 1)</div><div class="reqn">W ∝ N·f·λ</div></div></div>
-      <div class="ri"><div class="rdot" style="background:#ffa726"></div>
-        <div><div class="rname">Saturated (τ₀ ≫ 1)</div><div class="reqn">W ∝ b·√ln(τ₀)</div></div></div>
-      <div class="ri"><div class="rdot" style="background:#ef5350"></div>
-        <div><div class="rname">Damped (large N)</div><div class="reqn">W ∝ √(N·Γ)</div></div></div>
-    </div>
-
-  </aside>
-
-  <section class="chart-area">
-    <div class="chart-header">
-      <div>
-        <div class="chart-title" id="chartTitle">Select transitions in the sidebar</div>
-        <div class="chart-sub">log N (cm⁻²) → <span id="chartUnit">Wᵣ (mÅ)</span></div>
-      </div>
-    </div>
-
-    <div class="chart-wrap">
-      <canvas id="cogChart"></canvas>
-      <div class="empty-state" id="emptyState">
-        <div class="es-icon">∫</div>
-        <div>Check a transition in the sidebar to plot</div>
-      </div>
-    </div>
-
-    <div class="stats-row">
-      <div class="sc"><div class="sl">τ₀ at log N = 13</div><div class="sv" id="stat-tau">—</div></div>
-      <div class="sc"><div class="sl">Linear→Flat transition</div><div class="sv" id="stat-trans">—</div></div>
-      <div class="sc"><div class="sl">Wᵣ at log N = 14</div><div class="sv" id="stat-w14">—</div></div>
-      <div class="sc"><div class="sl">Damping a (b=30)</div><div class="sv" id="stat-a">—</div></div>
-    </div>
-  </section>
-</div>
-
-<script>
-// ────────────────────────────────────────────────────
-//  TRANSITION DATABASE
-// ────────────────────────────────────────────────────
-const TRANSITIONS = [
-  // H I
-  { element:'H',  ion:'H I',       lambda:1215.670, f:0.41620, gamma:6.265e8, label:'Lyα 1215' },
-  { element:'H',  ion:'H I',       lambda:1025.722, f:0.07912, gamma:1.897e8, label:'Lyβ 1025' },
-  { element:'H',  ion:'H I',       lambda: 972.537, f:0.02901, gamma:9.732e7, label:'Lyγ 972'  },
-  { element:'H',  ion:'H I',       lambda: 949.743, f:0.01395, gamma:6.670e7, label:'Lyδ 949'  },
-  // He II
-  { element:'He', ion:'He II',     lambda:  303.780, f:0.41620, gamma:1.002e10, label:'He II 303'  },
-  { element:'He', ion:'He II',     lambda: 1640.400, f:0.12360, gamma:6.265e8,  label:'He II 1640' },
-  // C II
-  { element:'C',  ion:'C II',      lambda:1334.532, f:0.12780, gamma:2.41e8, label:'C II 1334' },
-  { element:'C',  ion:'C II',      lambda:1036.337, f:0.12330, gamma:7.59e7, label:'C II 1036' },
-  // C III
-  { element:'C',  ion:'C III',     lambda: 977.020, f:0.76200, gamma:1.76e9, label:'C III 977' },
-  // C IV
-  { element:'C',  ion:'C IV',      lambda:1548.202, f:0.19080, gamma:2.65e8, label:'C IV 1548 (r)' },
-  { element:'C',  ion:'C IV',      lambda:1550.781, f:0.09522, gamma:2.64e8, label:'C IV 1550 (b)' },
-  // N II
-  { element:'N',  ion:'N II',      lambda:1083.990, f:0.10300, gamma:3.41e8, label:'N II 1084' },
-  // N III
-  { element:'N',  ion:'N III',     lambda: 989.799, f:0.12300, gamma:4.19e8, label:'N III 989' },
-  // N V
-  { element:'N',  ion:'N V',       lambda:1238.821, f:0.15700, gamma:3.37e8, label:'N V 1238 (r)' },
-  { element:'N',  ion:'N V',       lambda:1242.804, f:0.07770, gamma:3.35e8, label:'N V 1242 (b)' },
-  // Ne VIII
-  { element:'Ne', ion:'Ne VIII',   lambda: 770.409, f:0.10300, gamma:5.99e9, label:'Ne VIII 770 (r)' },
-  { element:'Ne', ion:'Ne VIII',   lambda: 780.324, f:0.05150, gamma:5.86e9, label:'Ne VIII 780 (b)' },
-  // O I
-  { element:'O',  ion:'O I',       lambda:1302.168, f:0.04887, gamma:5.65e8, label:'O I 1302' },
-  { element:'O',  ion:'O I',       lambda:1025.762, f:0.00295, gamma:7.32e6, label:'O I 1025' },
-  // O VI
-  { element:'O',  ion:'O VI',      lambda:1031.926, f:0.13290, gamma:4.16e8, label:'O VI 1031 (r)' },
-  { element:'O',  ion:'O VI',      lambda:1037.617, f:0.06598, gamma:4.09e8, label:'O VI 1037 (b)' },
-  // Si II
-  { element:'Si', ion:'Si II',     lambda:1260.422, f:1.00700, gamma:2.57e9, label:'Si II 1260' },
-  { element:'Si', ion:'Si II',     lambda:1193.290, f:0.58500, gamma:7.37e8, label:'Si II 1193' },
-  { element:'Si', ion:'Si II',     lambda:1190.416, f:0.29200, gamma:3.68e8, label:'Si II 1190' },
-  { element:'Si', ion:'Si II',     lambda:1526.707, f:0.12700, gamma:3.86e8, label:'Si II 1526' },
-  { element:'Si', ion:'Si II',     lambda:1304.370, f:0.09400, gamma:1.68e9, label:'Si II 1304' },
-  // Si III
-  { element:'Si', ion:'Si III',    lambda:1206.500, f:1.66000, gamma:2.54e9, label:'Si III 1206' },
-  // Si IV
-  { element:'Si', ion:'Si IV',     lambda:1393.755, f:0.52800, gamma:8.80e8, label:'Si IV 1393 (r)' },
-  { element:'Si', ion:'Si IV',     lambda:1402.770, f:0.26200, gamma:8.72e8, label:'Si IV 1402 (b)' },
-  // S II
-  { element:'S',  ion:'S II',      lambda:1250.584, f:0.00545, gamma:4.28e7, label:'S II 1250' },
-  { element:'S',  ion:'S II',      lambda:1253.811, f:0.01080, gamma:8.51e7, label:'S II 1253' },
-  { element:'S',  ion:'S II',      lambda:1259.519, f:0.01624, gamma:1.27e8, label:'S II 1259' },
-  // S III
-  { element:'S',  ion:'S III',     lambda:1012.500, f:0.03600, gamma:1.10e8, label:'S III 1012' },
-  // S IV
-  { element:'S',  ion:'S IV',      lambda:1062.664, f:0.05000, gamma:1.62e8, label:'S IV 1062' },
-  { element:'S',  ion:'S IV',      lambda:1072.996, f:0.02500, gamma:8.08e7, label:'S IV 1072' },
-  // S V
-  { element:'S',  ion:'S V',       lambda: 786.480, f:0.08200, gamma:3.60e8, label:'S V 786' },
-  // S VI
-  { element:'S',  ion:'S VI',      lambda: 933.378, f:0.43600, gamma:2.24e9, label:'S VI 933 (r)' },
-  { element:'S',  ion:'S VI',      lambda: 944.523, f:0.21700, gamma:2.18e9, label:'S VI 944 (b)' },
-  // Fe II
-  { element:'Fe', ion:'Fe II',     lambda:1144.938, f:0.08330, gamma:1.78e8, label:'Fe II 1144' },
-  { element:'Fe', ion:'Fe II',     lambda:1608.451, f:0.05800, gamma:3.84e7, label:'Fe II 1608' },
-  { element:'Fe', ion:'Fe II',     lambda:2344.213, f:0.11420, gamma:1.53e8, label:'Fe II 2344' },
-  { element:'Fe', ion:'Fe II',     lambda:2374.461, f:0.03130, gamma:3.02e7, label:'Fe II 2374' },
-  { element:'Fe', ion:'Fe II',     lambda:2382.764, f:0.30060, gamma:3.13e8, label:'Fe II 2382' },
-  { element:'Fe', ion:'Fe II',     lambda:2586.650, f:0.06910, gamma:9.12e7, label:'Fe II 2586' },
-  { element:'Fe', ion:'Fe II',     lambda:2600.173, f:0.23940, gamma:2.35e8, label:'Fe II 2600' },
-];
-
-// Per-transition color palette
-const TCOLORS  = ['#4fc3f7','#ffa726','#66bb6a','#ab47bc','#ef5350','#26c6da','#ffee58','#ff7043','#ec407a','#78909c'];
-// Multi-b colours & dash patterns
-const B_MULTI  = [10, 30, 100];
-const B_COLORS = ['#ab47bc','#4fc3f7','#ffa726'];
-const B_DASHES = [[5,3],[],[3,3]];
-
-// ────────────────────────────────────────────────────
-//  PHYSICS
-// ────────────────────────────────────────────────────
-function voigtH(a, u) {
-  const u2 = u * u, g = Math.exp(-u2);
-  if (a < 1e-8) return g;
-  return g + (a / (Math.sqrt(Math.PI) * (u2 + a * a))) * (1 - g);
-}
-function tau0(f, lam, N, b) { return 1.4971e-15 * f * lam * N / b; }
-function dampA(gamma, lam, b) { return gamma * lam * 1e-8 / (4 * Math.PI * b * 1e5); }
-
-function computeWr_A(tr, N, b) {
-  const t0 = tau0(tr.f, tr.lambda, N, b);
-  const a  = dampA(tr.gamma, tr.lambda, b);
-  const uf = t0 > 1 ? Math.sqrt(Math.log(t0)) + 3 : 5;
-  const uw = (a > 1e-6 && t0 > 10) ? Math.sqrt(t0 * a / Math.sqrt(Math.PI)) * 2 : 0;
-  const um = Math.max(uf, uw, 8);
-  const n  = Math.min(5000, Math.max(600, Math.ceil(um * 250)));
-  const du = um / n;
-  let s = 0;
-  for (let i = 0; i < n; i++) {
-    const u = (i + .5) * du;
-    s += 1 - Math.exp(-t0 * voigtH(a, u));
-  }
-  return (tr.lambda * b / 2.998e5) * 2 * s * du;
-}
-
-function buildCOG(tr, b) {
-  const logN = [], Wr = [];
-  for (let lN = 10; lN <= 22.05; lN += 0.1) {
-    logN.push(+lN.toFixed(1));
-    Wr.push(computeWr_A(tr, Math.pow(10, lN), b));
-  }
-  return { logN, Wr };
-}
-
-function cvt(Wr_A, tr, b, unit) {
-  if (unit === 'A')  return Wr_A;
-  if (unit === 'mA') return Wr_A * 1000;
-  return Wr_A / tr.lambda * 2.998e5;
-}
-function unitLbl(u) { return u==='mA'?'Wᵣ (mÅ)':u==='A'?'Wᵣ (Å)':'Wᵣ (km s⁻¹)'; }
-
-// ────────────────────────────────────────────────────
-//  STATE
-// ────────────────────────────────────────────────────
-let cogChart    = null;
-let checkedIdxs = new Set();   // TRANSITIONS indices
-
-// ────────────────────────────────────────────────────
-//  DROPDOWNS
-// ────────────────────────────────────────────────────
-function populateIons(el) {
-  const ionSel = document.getElementById('ionFilter');
-  const ions   = [...new Set(
-    TRANSITIONS.filter(t => el === 'all' || t.element === el).map(t => t.ion)
-  )];
-  ionSel.innerHTML = ions.map(ion => `<option value="${ion}">${ion}</option>`).join('');
-}
-
-function populateChecks(ionVal) {
-  const box = document.getElementById('transChecks');
-  const matches = TRANSITIONS.map((t, i) => ({ t, i })).filter(({t}) => t.ion === ionVal);
-  box.innerHTML = matches.map(({t, i}, ci) => {
-    const col = TCOLORS[ci % TCOLORS.length];
-    const chk = checkedIdxs.has(i) ? 'checked' : '';
-    return `<label class="tci" data-idx="${i}">
-      <input type="checkbox" ${chk} data-idx="${i}">
-      <div class="tci-swatch" style="background:${col}"></div>
-      <div>
-        <div class="tci-name">${t.label}</div>
-        <div class="tci-f">λ ${t.lambda.toFixed(3)} Å  ·  f = ${t.f.toFixed(5)}</div>
-      </div>
-    </label>`;
-  }).join('');
-  box.querySelectorAll('input[type=checkbox]').forEach(cb =>
-    cb.addEventListener('change', e => {
-      const idx = +e.target.dataset.idx;
-      e.target.checked ? checkedIdxs.add(idx) : checkedIdxs.delete(idx);
-      rebuildDatasets(); updateStats();
-    })
-  );
-}
-
-// ────────────────────────────────────────────────────
-//  CHART — created once, never destroyed
-// ────────────────────────────────────────────────────
-function initChart() {
-  const ctx = document.getElementById('cogChart').getContext('2d');
-  cogChart = new Chart(ctx, {
-    type: 'line',
-    data: { datasets: [] },
-    options: {
-      animation: { duration: 50, easing: 'easeInOutQuad' },
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          type: 'linear',
-          title: { display:true, text:'log N (cm⁻²)', color:'#6b82a8',
-            font:{family:"'Space Mono',monospace",size:11} },
-          min:10, max:22,
-          ticks: { color:'#6b82a8', font:{family:"'Space Mono',monospace",size:9}, stepSize:2 },
-          grid:   { color:'rgba(79,195,247,0.06)' },
-          border: { color:'rgba(79,195,247,0.2)'  },
-        },
-        y: {
-          type: 'logarithmic',
-          title: { display:true, text:'Wᵣ (mÅ)', color:'#6b82a8',
-            font:{family:"'Space Mono',monospace",size:11} },
-          min: 1e-5,
-          ticks: {
-            color:'#6b82a8', font:{family:"'Space Mono',monospace",size:9},
-            callback: v => {
-              const e = Math.round(Math.log10(v));
-              return Math.abs(Math.log10(v)-e) < 0.01 ? `10^${e}` : null;
-            }
-          },
-          grid:   { color:'rgba(79,195,247,0.06)' },
-          border: { color:'rgba(79,195,247,0.2)'  },
-        }
-      },
-      plugins: {
-        legend: {
-          display: true,
-          labels: { color:'#c8d8f0', font:{family:"'Space Mono',monospace",size:9},
-            boxWidth:18, padding:12 }
-        },
-        tooltip: {
-          backgroundColor:'rgba(13,21,38,0.95)',
-          borderColor:'rgba(79,195,247,0.3)', borderWidth:1,
-          titleColor:'#4fc3f7', bodyColor:'#c8d8f0',
-          titleFont:{family:"'Space Mono',monospace",size:10},
-          bodyFont: {family:"'Space Mono',monospace",size:10},
-          callbacks: {
-            title: items => `log N = ${items[0].parsed.x.toFixed(1)}`,
-            label: item => {
-              const u = document.getElementById('unitSelect').value;
-              const s = u==='mA'?'mÅ':u==='A'?'Å':'km/s';
-              return ` ${item.dataset.label}: ${item.parsed.y.toExponential(3)} ${s}`;
-            }
-          }
-        }
-      }
-    }
-  });
-}
-
-// ── helper: sync title + empty state ──
-function syncMeta() {
-  const unit  = document.getElementById('unitSelect').value;
-  const empty = document.getElementById('emptyState');
-  if (!checkedIdxs.size) {
-    empty.style.display = 'flex';
-    document.getElementById('chartTitle').textContent = 'Select transitions in the sidebar';
-  } else {
-    empty.style.display = 'none';
-    const ions = [...new Set([...checkedIdxs].map(i => TRANSITIONS[i].ion))];
-    document.getElementById('chartTitle').textContent = ions.join('  +  ');
-  }
-  document.getElementById('chartUnit').textContent   = unitLbl(unit);
-  cogChart.options.scales.y.title.text               = unitLbl(unit);
-}
-
-// ── REBUILD: called when transitions added/removed or multiB toggled ──
-// Replaces dataset objects entirely but uses animation:false so there is
-// NO entrance animation — curves just appear instantly.
-function rebuildDatasets() {
-  const b    = +document.getElementById('bParam').value;
-  const unit = document.getElementById('unitSelect').value;
-  const mB   = document.getElementById('multiB').checked;
-  syncMeta();
-
-  if (!checkedIdxs.size) {
-    cogChart.data.datasets = [];
-    cogChart.update('none');
-    return;
-  }
-
-  const ds = [];
-  [...checkedIdxs].forEach((tIdx, ci) => {
-    const tr  = TRANSITIONS[tIdx];
-    const col = TCOLORS[ci % TCOLORS.length];
-    if (mB) {
-      B_MULTI.forEach((bv, bi) => {
-        const { logN, Wr } = buildCOG(tr, bv);
-        ds.push({
-          label: `${tr.label}  b=${bv}`,
-          data:  logN.map((x, k) => ({ x, y: cvt(Wr[k], tr, bv, unit) })),
-          borderColor: B_COLORS[bi], backgroundColor: 'transparent',
-          borderWidth: bv === b ? 2.5 : 1.5,
-          borderDash: B_DASHES[bi], pointRadius: 0, tension: 0.15,
-          // metadata for in-place updates
-          _tIdx: tIdx, _bVal: bv, _ci: ci,
-        });
-      });
-    } else {
-      const { logN, Wr } = buildCOG(tr, b);
-      ds.push({
-        label: tr.label,
-        data:  logN.map((x, k) => ({ x, y: cvt(Wr[k], tr, b, unit) })),
-        borderColor: col, backgroundColor: 'transparent',
-        borderWidth: 2.2, borderDash: [], pointRadius: 0, tension: 0.15,
-        _tIdx: tIdx, _bVal: b, _ci: ci,
-      });
-    }
-  });
-
-  cogChart.data.datasets = ds;
-  cogChart.update('none');   // instant — no entrance animation
-}
-
-// ── UPDATE B IN-PLACE: called ONLY when the b-slider moves ──
-// Mutates existing dataset .data[k].y values so Chart.js tweens
-// smoothly between old and new positions — no re-entry animation.
-function updateBInPlace() {
-  const b    = +document.getElementById('bParam').value;
-  const unit = document.getElementById('unitSelect').value;
-  const mB   = document.getElementById('multiB').checked;
-
-  if (!cogChart.data.datasets.length) return;
-
-  cogChart.data.datasets.forEach(ds => {
-    const tr = TRANSITIONS[ds._tIdx];
-    if (!tr) return;
-
-    if (mB) {
-      // Fixed b values — only update the highlight thickness, no recompute needed
-      ds.borderWidth = ds._bVal === b ? 2.5 : 1.5;
-    } else {
-      // Recompute y-values for this transition at the new b, mutate in place
-      const { Wr } = buildCOG(tr, b);
-      ds.data.forEach((pt, k) => { pt.y = cvt(Wr[k], tr, b, unit); });
-      ds._bVal = b;
-    }
-  });
-
-  // Smooth tween between old and new y positions
-  cogChart.update();
-}
-
-// ────────────────────────────────────────────────────
-//  STATS
-// ────────────────────────────────────────────────────
-function updateStats() {
-  const b    = +document.getElementById('bParam').value;
-  const unit = document.getElementById('unitSelect').value;
-  const uStr = unit==='mA'?'mÅ':unit==='A'?'Å':'km/s';
-  document.getElementById('ti-b').textContent = `${b} km/s`;
-
-  if (!checkedIdxs.size) {
-    ['stat-tau','stat-trans','stat-w14','stat-a','ti-tau','ti-a','ti-count']
-      .forEach(id => { const el=document.getElementById(id); if(el) el.textContent='—'; });
-    return;
-  }
-  const tr = TRANSITIONS[[...checkedIdxs][0]];
-  const t0 = tau0(tr.f, tr.lambda, 1e13, b);
-  const a  = dampA(tr.gamma, tr.lambda, 30);
-  const Nt = b / (1.4971e-15 * tr.f * tr.lambda);
-  const W14= cvt(computeWr_A(tr, 1e14, b), tr, b, unit);
-
-  document.getElementById('stat-tau').textContent   = t0.toExponential(2);
-  document.getElementById('stat-trans').textContent = `log N ≈ ${Math.log10(Nt).toFixed(1)}`;
-  document.getElementById('stat-w14').textContent   = `${W14.toFixed(3)} ${uStr}`;
-  document.getElementById('stat-a').textContent     = a.toExponential(3);
-  document.getElementById('ti-tau').textContent     = t0.toExponential(2);
-  document.getElementById('ti-a').textContent       = a.toExponential(3);
-  document.getElementById('ti-count').textContent   = `${checkedIdxs.size} line${checkedIdxs.size!==1?'s':''}`;
-}
-
-// ────────────────────────────────────────────────────
-//  EVENTS
-// ────────────────────────────────────────────────────
-document.getElementById('elementFilter').addEventListener('change', function() {
-  checkedIdxs.clear();
-  populateIons(this.value);
-  populateChecks(document.getElementById('ionFilter').value);
-  rebuildDatasets(); updateStats();
-});
-document.getElementById('ionFilter').addEventListener('change', function() {
-  populateChecks(this.value);
-  rebuildDatasets(); updateStats();
-});
-document.getElementById('bParam').addEventListener('input', function() {
-  document.getElementById('bVal').textContent = this.value;
-  updateBInPlace(); updateStats();   // ← in-place: no entrance animation
-});
-document.getElementById('multiB').addEventListener('change', () => { rebuildDatasets(); });
-document.getElementById('unitSelect').addEventListener('change', () => { rebuildDatasets(); updateStats(); });
-
-// ────────────────────────────────────────────────────
-//  INIT
-// ────────────────────────────────────────────────────
-initChart();
-populateIons('all');
-populateChecks(document.getElementById('ionFilter').value);
-rebuildDatasets();
-updateStats();
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js" onload="CGM.renderMath()"></script>
+<script src="data/lines.js"></script>
+<script src="assets/js/physics.js"></script>
+<script src="assets/js/mplfig.js"></script>
+<script src="assets/js/common.js"></script>
+<script src="assets/js/cog.js"></script>
 </body>
 </html>
