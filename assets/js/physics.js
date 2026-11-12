@@ -3,6 +3,7 @@
  *   tau0(line, N, b)   line-centre optical depth of a Voigt profile
  *   dampA(line, b)     Voigt damping parameter a = Gamma lambda / (4 pi b)
  *   Wlambda(line,N,b)  rest-frame equivalent width in Angstrom
+ *   profile(line,N,b,v) normalized flux exp[-tau0 H(a, v/b)] at velocities v [km/s]
  *
  * line = {wave [A], f, Gamma [s^-1]};  N in cm^-2;  b in km/s.
  *
@@ -113,6 +114,33 @@
     return 2 * dlD * I;
   }
 
+  /** Normalized flux F(v) = exp[-tau0 H(a, v/b)] at velocity offsets v [km/s]. */
+  function profile(line, N, b, v) {
+    const t0 = tau0(line, N, b), a = dampA(line, b);
+    return v.map(x => Math.exp(-t0 * voigtH(a, Math.abs(x) / b)));
+  }
+
+  /** |v| [km/s] beyond which tau < tauMin: the larger of the Doppler-core and
+   *  Lorentzian-wing extents, never less than 3b. */
+  function profileHalfWidth(line, N, b, tauMin = 0.01) {
+    const t0 = tau0(line, N, b), a = dampA(line, b);
+    const core = t0 > tauMin ? Math.sqrt(Math.log(t0 / tauMin)) : 0;
+    const wing = Math.sqrt(t0 * a / (SQRTPI * tauMin));
+    return b * Math.max(3, core, wing);
+  }
+
+  /** Velocity grid on [-vmax, vmax]: uniform, plus a dense block across the
+   *  line core so narrow cores stay resolved on a wide (damped) window. */
+  function profileGrid(line, N, b, vmax, nUni = 500, nCore = 400) {
+    const t0 = tau0(line, N, b);
+    const vc = Math.min(vmax, b * (Math.sqrt(Math.log(Math.max(t0, 1))) + 4));
+    const v = [];
+    for (let i = 0; i <= nUni; i++) v.push(-vmax + 2 * vmax * i / nUni);
+    for (let i = 0; i <= nCore; i++) v.push(-vc + 2 * vc * i / nCore);
+    v.sort((p, q) => p - q);
+    return v.filter((x, i) => i === 0 || x - v[i - 1] > 1e-9);
+  }
+
   /** log N where the line-centre optical depth equals 1. */
   function logNtau1(line, b) { return Math.log10(b / (TAU0_K * line.f * line.wave)); }
 
@@ -126,5 +154,6 @@
   };
 
   root.CGMPhysics = { voigtH, tau0, dampA, Wlambda, cog, logNtau1, UNITS,
+                      profile, profileHalfWidth, profileGrid,
                       TAU0_K, LIN_K, C_KMS };
 })(typeof window !== "undefined" ? window : globalThis);

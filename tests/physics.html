@@ -45,7 +45,18 @@
     check(`damped ${id} logN=${x}`, P.Wlambda(l, N, b), want, 2e-2);
   });
 
-  // 4. full curve of growth vs independent scipy reference
+  // 4. profile() integrates to Wlambda():  W = (lambda/c) [ int (1-F) dv + Lorentzian tail beyond vmax ]
+  [["HI_1215", 13], ["HI_1215", 18], ["HI_1215", 21], ["OVI_1031", 14], ["MgII_2796", 16]].forEach(([id, x]) => {
+    const l = byId[id], N = Math.pow(10, x), b = 30;
+    const vmax = P.profileHalfWidth(l, N, b, 1e-3);
+    const v = P.profileGrid(l, N, b, vmax, 20000, 4000), F = P.profile(l, N, b, v);
+    let I = 0;
+    for (let i = 1; i < v.length; i++) I += 0.5 * (2 - F[i] - F[i - 1]) * (v[i] - v[i - 1]);
+    I += 2 * b * P.tau0(l, N, b) * P.dampA(l, b) / (Math.sqrt(Math.PI) * vmax / b);
+    check(`profile integral ${id} logN=${x}`, I * l.wave / P.C_KMS, P.Wlambda(l, N, b), 5e-3);
+  });
+
+  // 5. full curve of growth vs independent scipy reference
   (window.REFERENCE_COG || []).forEach(r =>
     check(`COG ${r.id} b=${r.b} logN=${r.logN}`, P.Wlambda(byId[r.id], Math.pow(10, r.logN), r.b), r.W, 5e-3));
 

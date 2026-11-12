@@ -10,6 +10,10 @@
  *   x2: {fromX: E => lambda, toX: lambda => E, label}       // optional secondary top axis
  *   lines:  [{x: [], y: [], color, lw, ls: "-"|"--"|":"|"-.", label}],
  *   barh:   [{y, x0, x1, h (in y data units), color, title}],
+ *   fills:  [{x: [], y1: [], y2: [] | number, color, alpha}],
+ *   texts:  [{x, y, coords: "axes"|"data", text: markup, anchor, size, bbox}],
+ *   panels: [{y, lines, fills, texts, ...}]  -> vertical stack sharing spec.x
+ *           (with spec.hspace, spec.ylabel as a figure-level y label)
  *   vlines: [{x, color, ls, lw, text}],  hlines: [{y, color, lw}],
  *   legend: {loc: "upper left"|..., entries: [{label, color, ls, lw, patch}]},   (or legends: [...])
  * }
@@ -149,6 +153,8 @@
   }
 
   // ------------------------------------------------------------------ render
+  /** Figure: a single axes (spec.x/spec.y/...) or a vertical stack of axes
+   *  (spec.panels = [{y, lines, fills, texts, ...}] sharing spec.x). */
   function render(container, spec, size) {
     const W = Math.round(size.width), H = Math.round(size.height);
     const m = Object.assign({ l: 64, r: 16, t: 14, b: 50 }, spec.margin);
@@ -160,35 +166,72 @@
     }, container);
     if (spec.title) el("title", {}, svg).textContent = spec.title;
     el("rect", { x: 0, y: 0, width: W, height: H, fill: "#fff" }, svg);
-    const g = el("g", { transform: `translate(${m.l},${m.t})` }, svg);
-    const x = scaleFor(spec.x, [0, pw]);
-    const y = scaleFor(spec.y, spec.y.invert ? [0, ph] : [ph, 0]);
+    const defs = el("defs", {}, svg);
+    if (!spec.panels) {
+      const g = el("g", { transform: `translate(${m.l},${m.t})` }, svg);
+      const ax = drawAxes(defs, g, spec, pw, ph, { xTickLabels: true, xLabel: spec.x.label });
+      return { svg, g, ...ax, pw, ph, margin: m, W, H };
+    }
+    const n = spec.panels.length, hs = spec.hspace || 0;
+    const php = (ph - hs * (n - 1)) / n;
+    const panels = spec.panels.map((p, i) => {
+      const top = m.t + i * (php + hs);
+      const g = el("g", { transform: `translate(${m.l},${top.toFixed(2)})` }, svg);
+      const last = i === n - 1;
+      const ax = drawAxes(defs, g, { ...p, x: spec.x }, pw, php,
+                          { xTickLabels: last || hs > 0, xLabel: last ? spec.x.label : null,
+                            topTicks: i === 0 || hs > 0 });  // shared edges get one set of ticks
+      return { g, ...ax, top, ph: php };
+    });
+    if (spec.ylabel) {                             // figure-level y label (matplotlib supylabel)
+      const yl = text(svg, 0, 0, spec.ylabel, FS.label, { "text-anchor": "middle" });
+      yl.setAttribute("transform", `translate(${m.l - (spec.ylabelPad || 46)},${m.t + ph / 2}) rotate(-90)`);
+    }
+    return { svg, panels, pw, ph, margin: m, W, H };
+  }
+
+  /** Draw one axes into group g (already translated to the axes origin). */
+  function drawAxes(defs, g, ax, pw, ph, opts) {
+    const x = scaleFor(ax.x, [0, pw]);
+    const y = scaleFor(ax.y, ax.y.invert ? [0, ph] : [ph, 0]);
     const clipId = `clip${++uid}`;
-    el("rect", { x: 0, y: 0, width: pw, height: ph }, el("clipPath", { id: clipId }, el("defs", {}, svg)));
+    el("rect", { x: 0, y: 0, width: pw, height: ph }, el("clipPath", { id: clipId }, defs));
     const plot = el("g", { "clip-path": `url(#${clipId})` }, g);
+    const pt = (xv, yv) => `${x(xv).toFixed(2)},${y(yv).toFixed(2)}`;
 
     // --- artists
-    for (const b of spec.barh || []) {
+    for (const f of ax.fills || []) {            // fill_between(x, y1, y2)
+      const up = [], dn = [];
+      for (let i = 0; i < f.x.length; i++) {
+        const y2 = Array.isArray(f.y2) ? f.y2[i] : f.y2;
+        if (!(isFinite(f.x[i]) && isFinite(f.y1[i]) && isFinite(y2))) continue;
+        up.push(pt(f.x[i], f.y1[i])); dn.push(pt(f.x[i], y2));
+      }
+      if (up.length > 1)
+        el("polygon", { points: up.concat(dn.reverse()).join(" "), fill: f.color || CYCLE[0],
+          "fill-opacity": f.alpha ?? 0.2, stroke: "none" }, plot);
+    }
+    for (const b of ax.barh || []) {
       const x0 = x(Math.max(b.x0, x.domain()[0])), x1 = x(Math.min(b.x1, x.domain()[1]));
       const hpx = Math.abs(y(1) - y(0)) * b.h;          // b.h in data units of y
       const r = el("rect", { x: Math.min(x0, x1), y: y(b.y) - hpx / 2, width: Math.abs(x1 - x0), height: hpx,
         fill: b.color, stroke: b.edge || "none", "stroke-width": b.edge ? 0.8 : null }, plot);
       if (b.title) el("title", {}, r).textContent = b.title;
     }
-    for (const h of spec.hlines || [])
+    for (const h of ax.hlines || [])
       el("line", { x1: 0, x2: pw, y1: y(h.y), y2: y(h.y), stroke: h.color || "#000", "stroke-width": h.lw || 0.8,
         "stroke-dasharray": dash(h.ls, h.lw || 0.8) }, plot);
-    for (const v of spec.vlines || []) {
+    for (const v of ax.vlines || []) {
       el("line", { x1: x(v.x), x2: x(v.x), y1: 0, y2: ph, stroke: v.color || "#000", "stroke-width": v.lw || 0.8,
         "stroke-dasharray": dash(v.ls, v.lw || 0.8) }, plot);
       if (v.text) text(g, x(v.x) + 3, FS.text + 3, v.text, FS.text, { fill: v.color || "#000" });
     }
-    for (const L of spec.lines || []) {
+    for (const L of ax.lines || []) {
       const pts = [];
       for (let i = 0; i < L.x.length; i++) {
         const xv = L.x[i], yv = L.y[i];
-        if (!(isFinite(xv) && isFinite(yv)) || (spec.y.scale === "log" && yv <= 0)) continue;
-        pts.push(`${x(xv).toFixed(2)},${y(yv).toFixed(2)}`);
+        if (!(isFinite(xv) && isFinite(yv)) || (ax.y.scale === "log" && yv <= 0)) continue;
+        pts.push(pt(xv, yv));
       }
       if (pts.length > 1)
         el("polyline", { points: pts.join(" "), fill: "none", stroke: L.color || CYCLE[0],
@@ -199,47 +242,61 @@
     // --- frame + ticks (inward, all four sides)
     const axes = el("g", { stroke: "#000", "stroke-width": 0.8, fill: "none" }, g);
     el("rect", { x: 0, y: 0, width: pw, height: ph }, axes);
-    const xt = spec.x.ticks ? { major: spec.x.ticks, minor: [] } :
-      spec.x.scale === "log" ? logTicks(...x.domain()) : linTicks(...x.domain());
-    const yt = spec.y.ticks ? { major: spec.y.ticks, minor: [] } :
-      spec.y.scale === "log" ? logTicks(...minmax(y.domain())) : linTicks(...minmax(y.domain()));
+    const xt = ax.x.ticks ? { major: ax.x.ticks, minor: [] } :
+      ax.x.scale === "log" ? logTicks(...x.domain()) : linTicks(...x.domain());
+    const yt = ax.y.ticks ? { major: ax.y.ticks, minor: ax.y.minorTicks || [] } :
+      ax.y.scale === "log" ? logTicks(...minmax(y.domain())) : linTicks(...minmax(y.domain()), ax.y.nticks || 6);
     const tl = el("g", { "font-size": FS.tick }, g);
     const inX = v => { const p = x(v); return p >= -0.5 && p <= pw + 0.5; };
     const inY = v => { const p = y(v); return p >= -0.5 && p <= ph + 0.5; };
-    for (const [t, len] of [...xt.major.map(t => [t, TICK.major]), ...(spec.x.minor === false ? [] : xt.minor.map(t => [t, TICK.minor]))]) {
+    for (const [t, len] of [...xt.major.map(t => [t, TICK.major]), ...(ax.x.minor === false ? [] : xt.minor.map(t => [t, TICK.minor]))]) {
       if (!inX(t.v)) continue;
       const px = x(t.v);
       el("line", { x1: px, x2: px, y1: ph, y2: ph - len }, axes);
-      if (!spec.x2) el("line", { x1: px, x2: px, y1: 0, y2: len }, axes);
-      if (t.label && len === TICK.major) text(tl, px, ph + TICK.pad + FS.tick * 0.95, t.label, FS.tick, { "text-anchor": "middle" });
+      if (!ax.x2 && opts.topTicks !== false) el("line", { x1: px, x2: px, y1: 0, y2: len }, axes);
+      if (opts.xTickLabels && t.label && len === TICK.major)
+        text(tl, px, ph + TICK.pad + FS.tick * 0.95, t.label, FS.tick, { "text-anchor": "middle" });
     }
-    for (const [t, len] of [...yt.major.map(t => [t, TICK.major]), ...(spec.y.minor === false ? [] : yt.minor.map(t => [t, TICK.minor]))]) {
+    for (const [t, len] of [...yt.major.map(t => [t, TICK.major]), ...(ax.y.minor === false ? [] : yt.minor.map(t => [t, TICK.minor]))]) {
       if (!inY(t.v)) continue;
       const py = y(t.v);
       el("line", { x1: 0, x2: len, y1: py, y2: py }, axes);
       el("line", { x1: pw, x2: pw - len, y1: py, y2: py }, axes);
       if (t.label && len === TICK.major) text(tl, -TICK.pad, py + FS.tick * 0.33, t.label, FS.tick, { "text-anchor": "end" });
     }
-    if (spec.x2) {                                 // secondary top axis (same quantity, other units)
-      const d = x.domain().map(spec.x2.fromX);
+    if (ax.x2) {                                   // secondary top axis (same quantity, other units)
+      const d = x.domain().map(ax.x2.fromX);
       const t2 = logTicks(...minmax(d));
       for (const [t, len] of [...t2.major.map(t => [t, TICK.major]), ...t2.minor.map(t => [t, TICK.minor])]) {
-        const px = x(spec.x2.toX(t.v));
+        const px = x(ax.x2.toX(t.v));
         if (px < -0.5 || px > pw + 0.5) continue;
         el("line", { x1: px, x2: px, y1: 0, y2: len }, axes);
         if (t.label && len === TICK.major) text(tl, px, -TICK.pad, t.label, FS.tick, { "text-anchor": "middle" });
       }
-      if (spec.x2.label) text(g, pw / 2, -TICK.pad - FS.tick - 8, spec.x2.label, FS.label, { "text-anchor": "middle" });
+      if (ax.x2.label) text(g, pw / 2, -TICK.pad - FS.tick - 8, ax.x2.label, FS.label, { "text-anchor": "middle" });
     }
-    if (spec.x.label) text(g, pw / 2, ph + TICK.pad + FS.tick + FS.label + 6, spec.x.label, FS.label, { "text-anchor": "middle" });
-    if (spec.y.label) {
-      const yl = text(g, 0, 0, spec.y.label, FS.label, { "text-anchor": "middle" });
-      yl.setAttribute("transform", `translate(${-(spec.y.labelPad || 46)},${ph / 2}) rotate(-90)`);
+    if (opts.xLabel) text(g, pw / 2, ph + TICK.pad + FS.tick + FS.label + 6, opts.xLabel, FS.label, { "text-anchor": "middle" });
+    if (ax.y.label) {
+      const yl = text(g, 0, 0, ax.y.label, FS.label, { "text-anchor": "middle" });
+      yl.setAttribute("transform", `translate(${-(ax.y.labelPad || 46)},${ph / 2}) rotate(-90)`);
     }
-    for (const L of spec.legends || (spec.legend ? [spec.legend] : []))
+    for (const L of ax.legends || (ax.legend ? [ax.legend] : []))
       if (L.entries && L.entries.length) legend(g, L, pw, ph);
+    for (const T of ax.texts || []) {             // ax.text(..., transform=ax.transAxes) with optional white bbox
+      const px = T.coords === "data" ? x(T.x) : T.x * pw;
+      const py = T.coords === "data" ? y(T.y) : (1 - T.y) * ph;
+      const fs = T.size || FS.text;
+      const grp = el("g", {}, g);
+      const t = text(grp, px, py, T.text, fs, { "text-anchor": T.anchor || "start", fill: T.color || "#000" });
+      if (T.bbox) {
+        const w = textWidth(t, T.text, fs);
+        const x0 = T.anchor === "end" ? px - w : T.anchor === "middle" ? px - w / 2 : px;
+        grp.insertBefore(el("rect", { x: (x0 - 2.5).toFixed(1), y: (py - fs * 0.82).toFixed(1),
+          width: (w + 5).toFixed(1), height: (fs * 1.12).toFixed(1), fill: "#fff", "fill-opacity": 0.85 }), t);
+      }
+    }
     const overlay = el("g", { "pointer-events": "none" }, g);
-    return { svg, g, plot, overlay, x, y, pw, ph, margin: m, W, H };
+    return { plot, overlay, x, y };
   }
 
   function minmax(a) { return [Math.min(...a), Math.max(...a)]; }
@@ -378,8 +435,10 @@
     const draw = () => {
       const w = Math.max(opts.minWidth || 300, Math.min(opts.maxWidth || 900, container.clientWidth || 640));
       const h = typeof aspect === "function" ? aspect(w) : w * aspect;
-      fig = render(container, getSpec(w), { width: w, height: h });
+      const spec = getSpec(w);
       lastW = container.clientWidth;
+      if (!spec) { container.innerHTML = opts.empty || ""; fig = null; return null; }   // nothing to plot
+      fig = render(container, spec, { width: w, height: h });
       if (opts.after) opts.after(fig);
       return fig;
     };

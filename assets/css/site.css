@@ -136,6 +136,13 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--ink); }
 .small { font-size: .88rem; }
 .err { color: #a00; }
 
+/* ---------- figure row (COG page: Figure 1 + Figure 2) ---------- */
+.figrow { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.4rem; align-items: start; }
+@media (min-width: 1300px) {
+  body.wide .masthead, body.wide main, body.wide footer { max-width: 92rem; }
+  .figrow { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+
 /* ---------- tool layout ---------- */
 .tool { display: grid; grid-template-columns: 19rem minmax(0, 1fr); gap: 2rem; align-items: start; }
 .panel { font-size: .95rem; }

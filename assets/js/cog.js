@@ -1,4 +1,4 @@
-/* Curve-of-growth page. */
+/* Curve-of-growth page: Figure 1 (COG), Figure 2 (Voigt profiles), Table 1. */
 (function () {
   "use strict";
   const P = window.CGMPhysics, F = window.MplFig, C = window.CGM;
@@ -12,9 +12,12 @@
   const STEP = 0.05;                                   // dex sampling of log N
   const UNIT_AXIS = { mA: "mÅ", A: "Å", kms: "km s^{−1}" };
   const UNIT_HTML = { mA: "mÅ", A: "Å", kms: "km&thinsp;s<sup>−1</sup>" };
+  const WIDE = window.matchMedia("(min-width: 1300px)"); // figures side by side (see site.css)
+  const NS = "http://www.w3.org/2000/svg";
   const $ = id => document.getElementById(id);
 
-  const state = { sel: [], b: 30, ref: true, unit: "mA", nMin: 10, nMax: 22, statN: 14, ion: null, q: "" };
+  const state = { sel: [], b: 30, ref: true, unit: "mA", nMin: 10, nMax: 22,
+                  profN: 14, vmax: null, ion: null, q: "" };
 
   // ---------------------------------------------------------------- state <-> URL
   function nextColor() {
@@ -34,14 +37,29 @@
       const [a, c] = h.get("logN").split(",").map(Number);
       if (isFinite(a) && isFinite(c) && c - a >= 1) { state.nMin = a; state.nMax = c; }
     }
+    const n = parseFloat(h.get("N"));
+    if (isFinite(n)) state.profN = n;
+    const v = parseFloat(h.get("vmax"));
+    if (v > 0) state.vmax = v;
+    state.profN = clampN(state.profN);
   }
   function writeHash() {
-    const h = new URLSearchParams({ lines: state.sel.map(s => s.id).join(","), b: state.b,
-      unit: state.unit, ref: state.ref ? 1 : 0, logN: `${state.nMin},${state.nMax}` });
-    history.replaceState(null, "", "#" + h.toString().replace(/%2C/g, ","));
+    const o = { lines: state.sel.map(s => s.id).join(","), b: state.b, unit: state.unit,
+                ref: state.ref ? 1 : 0, logN: `${state.nMin},${state.nMax}`, N: state.profN.toFixed(2) };
+    if (state.vmax) o.vmax = state.vmax;
+    history.replaceState(null, "", "#" + new URLSearchParams(o).toString().replace(/%2C/g, ","));
   }
+  /** Run fn on the next animation frame, or after 60 ms if no frame comes
+   *  (rAF is starved in background tabs and some headless browsers). */
+  function nextFrame(fn) {
+    let done = false;
+    const run = () => { if (!done) { done = true; fn(); } };
+    requestAnimationFrame(run);
+    setTimeout(run, 60);
+  }
+  const clampN = n => +Math.min(state.nMax, Math.max(state.nMin, Math.round(n / STEP) * STEP)).toFixed(2);
 
-  // ---------------------------------------------------------------- curves
+  // ---------------------------------------------------------------- Figure 1: curve of growth
   const cache = new Map();
   function curve(line, b) {
     const key = `${line.id}|${b}|${state.nMin}|${state.nMax}`;
@@ -92,21 +110,58 @@
     };
   }
 
-  // ---------------------------------------------------------------- figure
-  let spec = null;
+  let spec = null, cogFig = null;
   const canvas = $("cogCanvas");
   const view = F.responsive(canvas, () => (spec = buildSpec()), w => Math.round(Math.min(w * 0.75, 620)),
-                            { maxWidth: 900, minWidth: 300, after: attachHover });
+                            { maxWidth: 900, minWidth: 300, after: fig => { cogFig = fig; attachHover(fig); drawPin(); scheduleProfiles(); } });
 
-  let readout = null;
+  /** Dashed marker at the pinned log N (drawn outside the spec, so not exported). */
+  function drawPin() {
+    if (!cogFig) return;
+    cogFig.g.querySelector(".pin")?.remove();
+    const xv = state.profN;
+    if (xv < state.nMin || xv > state.nMax) return;
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "pin");
+    g.setAttribute("pointer-events", "none");
+    const ln = document.createElementNS(NS, "line");
+    Object.entries({ x1: cogFig.x(xv), x2: cogFig.x(xv), y1: 0, y2: cogFig.ph, stroke: "#000",
+                     "stroke-width": 0.8, "stroke-dasharray": "4 3" }).forEach(([a, v]) => ln.setAttribute(a, v));
+    g.appendChild(ln);
+    cogFig.g.insertBefore(g, cogFig.overlay);
+  }
+
+  function placeReadout(ro, host, ev) {
+    const cr = host.getBoundingClientRect();
+    const left = ev.clientX - cr.left, top = ev.clientY - cr.top;
+    const w = ro.offsetWidth, h = ro.offsetHeight;
+    ro.style.left = `${left + 14 + w > cr.width ? left - 14 - w : left + 14}px`;
+    ro.style.top = `${Math.max(0, Math.min(cr.height - h, top - h / 2))}px`;
+  }
+  function svgEl(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    Object.entries(attrs).forEach(([a, v]) => e.setAttribute(a, v));
+    parent.appendChild(e);
+    return e;
+  }
+
   function attachHover(fig) {
-    readout = document.createElement("div");
+    const readout = document.createElement("div");
     readout.className = "readout"; readout.hidden = true;
     canvas.appendChild(readout);
     const svg = fig.svg;
     svg.style.touchAction = "pan-y";
-    const hide = () => { readout.hidden = true; fig.overlay.innerHTML = ""; };
+    svg.style.cursor = "crosshair";
+    let hoverN = null;
+    const hide = () => {
+      readout.hidden = true; fig.overlay.innerHTML = "";
+      if (hoverN !== null) { hoverN = null; previewN = null; scheduleProfiles(); }
+    };
     svg.addEventListener("pointerleave", hide);
+    svg.addEventListener("click", () => {
+      if (hoverN === null) return;
+      setProfN(hoverN);
+    });
     svg.addEventListener("pointermove", ev => {
       const r = svg.getBoundingClientRect();
       const sx = (ev.clientX - r.left) * fig.W / r.width, sy = (ev.clientY - r.top) * fig.H / r.height;
@@ -115,37 +170,147 @@
       if (px < 0 || px > fig.pw || py < 0 || py > fig.ph || !solid.length) return hide();
       const k = Math.max(0, Math.min(solid[0].x.length - 1, Math.round((fig.x.invert(px) - state.nMin) / STEP)));
       const xv = solid[0].x[k];
-      const ns = "http://www.w3.org/2000/svg";
       fig.overlay.innerHTML = "";
-      const vl = document.createElementNS(ns, "line");
-      Object.entries({ x1: fig.x(xv), x2: fig.x(xv), y1: 0, y2: fig.ph, stroke: "#777", "stroke-width": 0.7, "stroke-dasharray": "2 2" })
-        .forEach(([a, v]) => vl.setAttribute(a, v));
-      fig.overlay.appendChild(vl);
+      svgEl("line", { x1: fig.x(xv), x2: fig.x(xv), y1: 0, y2: fig.ph, stroke: "#777", "stroke-width": 0.7,
+                      "stroke-dasharray": "2 2" }, fig.overlay);
       const unit = UNIT_HTML[state.unit];
       let html = `log&thinsp;<i>N</i> = ${xv.toFixed(2)}&ensp;(<i>b</i> = ${fmtB(state.b)})`;
       for (const L of solid) {
         const yv = L.y[k];
-        if (yv > 0 && yv >= fig.y.domain()[0] && yv <= fig.y.domain()[1]) {
-          const c = document.createElementNS(ns, "circle");
-          Object.entries({ cx: fig.x(xv), cy: fig.y(yv), r: 3.2, fill: L.color, stroke: "#fff", "stroke-width": 1 })
-            .forEach(([a, v]) => c.setAttribute(a, v));
-          fig.overlay.appendChild(c);
-        }
+        if (yv > 0 && yv >= fig.y.domain()[0] && yv <= fig.y.domain()[1])
+          svgEl("circle", { cx: fig.x(xv), cy: fig.y(yv), r: 3.2, fill: L.color, stroke: "#fff", "stroke-width": 1 }, fig.overlay);
         html += `<br><span class="sw" style="border-color:${L.color}"></span>${C.lineHTML(BY_ID.get(L.id))}: ` +
                 `<i>W</i><sub>r</sub> = ${C.sig(yv, 3)} ${unit}`;
       }
+      html += `<br><span class="muted">click to fix the profiles here</span>`;
       readout.innerHTML = html;
       readout.hidden = false;
-      const cr = canvas.getBoundingClientRect();
-      const left = ev.clientX - cr.left, top = ev.clientY - cr.top;
-      const w = readout.offsetWidth, h = readout.offsetHeight;
-      readout.style.left = `${left + 14 + w > cr.width ? left - 14 - w : left + 14}px`;
-      readout.style.top = `${Math.max(0, Math.min(cr.height - h, top - h / 2))}px`;
+      placeReadout(readout, canvas, ev);
+      if (hoverN !== xv) { hoverN = xv; previewN = xv; scheduleProfiles(); }
     });
   }
 
   F.exportButtons($("cogTools"), () => buildSpec(), "curve_of_growth");
-  window.CGM_PAGE = { spec: () => buildSpec() };       // for tests / console use
+
+  // ---------------------------------------------------------------- Figure 2: Voigt profiles
+  let previewN = null;                                  // log N under the COG cursor, if any
+  const profCanvas = $("profCanvas");
+  const Y_TICKS = [0, 0.5, 1].map(v => ({ v, label: v.toFixed(1) }));
+  const Y_MINOR = [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2].map(v => ({ v }));
+
+  function niceCeil(v) {
+    const e = Math.pow(10, Math.floor(Math.log10(v)));
+    return [1, 2, 2.5, 5, 10].map(m => m * e).find(x => x >= v * (1 - 1e-9));
+  }
+  function profVmax(N) {
+    if (state.vmax) return state.vmax;
+    let v = 0;
+    for (const s of state.sel) v = Math.max(v, P.profileHalfWidth(BY_ID.get(s.id), N, state.b));
+    return Math.min(5000, Math.max(10, niceCeil(1.15 * v)));
+  }
+
+  function buildProfileSpec(logN, compact = false) {
+    if (!state.sel.length) return null;
+    const yTicks = compact ? Y_TICKS.map(t => (t.v === 0.5 ? { v: 0.5 } : t)) : Y_TICKS;   // short panels: label 0 and 1 only
+    const N = Math.pow(10, logN), vmax = profVmax(N), U = P.UNITS[state.unit];
+    const panels = state.sel.map(s => {
+      const l = BY_ID.get(s.id);
+      const v = P.profileGrid(l, N, state.b, vmax), Fv = P.profile(l, N, state.b, v);
+      const W = U.conv(P.Wlambda(l, N, state.b), l);
+      return {
+        y: { scale: "linear", lim: [-0.1, 1.25], ticks: yTicks, minorTicks: Y_MINOR },
+        fills: [{ x: v, y1: Fv, y2: 1, color: s.color, alpha: 0.16 }],
+        hlines: [{ y: 1, ls: ":", lw: 0.8, color: "#555" }, { y: 0, ls: ":", lw: 0.8, color: "#555" }],
+        lines: [{ x: v, y: Fv, color: s.color, lw: 1.5, id: s.id }],
+        texts: [{ x: 0.025, y: 0.09, text: C.lineMarkup(l), bbox: true, size: 12.5 },
+                { x: 0.975, y: 0.09, text: `*W*_{r} = ${C.sig(W, 3)} ${UNIT_AXIS[state.unit]}`,
+                  anchor: "end", bbox: true, size: 11.5 }],
+      };
+    });
+    return {
+      title: "Voigt profiles", margin: { l: 58, r: 12, t: 12, b: 52 }, hspace: 0,
+      x: { scale: "linear", lim: [-vmax, vmax], label: "Δ*v* [km s^{−1}]" },
+      ylabel: "Normalized flux", ylabelPad: 42, panels,
+    };
+  }
+  const profHeight = () => {
+    if (WIDE.matches && cogFig) return cogFig.H;
+    return Math.round(Math.max(260, Math.max(1, state.sel.length) * 115 + 64));
+  };
+
+  let profSpec = null, profFig = null;
+  const profView = F.responsive(profCanvas,
+    () => (profSpec = buildProfileSpec(previewN ?? state.profN, (profHeight() - 64) / Math.max(1, state.sel.length) < 85)), profHeight,
+    { maxWidth: 900, minWidth: 260, empty: '<p class="muted small">Select one or more transitions.</p>',
+      after: fig => { profFig = fig; attachProfileHover(fig); } });
+
+  let profPending = false;
+  function scheduleProfiles() {
+    if (profPending) return;
+    profPending = true;
+    nextFrame(() => { profPending = false; profView.draw(); renderProfCaption(); });
+  }
+
+  function attachProfileHover(fig) {
+    const readout = document.createElement("div");
+    readout.className = "readout"; readout.hidden = true;
+    profCanvas.appendChild(readout);
+    const svg = fig.svg;
+    svg.style.touchAction = "pan-y";
+    const clear = () => fig.panels.forEach(p => { p.overlay.innerHTML = ""; });
+    svg.addEventListener("pointerleave", () => { readout.hidden = true; clear(); });
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect();
+      const sx = (ev.clientX - r.left) * fig.W / r.width, sy = (ev.clientY - r.top) * fig.H / r.height;
+      const px = sx - fig.margin.l;
+      if (px < 0 || px > fig.pw || sy < fig.margin.t || sy > fig.margin.t + fig.ph) { readout.hidden = true; clear(); return; }
+      const vv = fig.panels[0].x.invert(px);
+      clear();
+      let html = `Δ<i>v</i> = ${C.fixed(vv, 1)}&nbsp;km&thinsp;s<sup>−1</sup>&ensp;(log&thinsp;<i>N</i> = ${(previewN ?? state.profN).toFixed(2)})`;
+      fig.panels.forEach((p, i) => {
+        const L = profSpec.panels[i].lines[0];
+        const k = nearest(L.x, vv), fv = L.y[k];
+        svgEl("line", { x1: p.x(vv), x2: p.x(vv), y1: 0, y2: p.ph, stroke: "#777", "stroke-width": 0.7,
+                        "stroke-dasharray": "2 2" }, p.overlay);
+        svgEl("circle", { cx: p.x(L.x[k]), cy: p.y(fv), r: 3, fill: L.color, stroke: "#fff", "stroke-width": 1 }, p.overlay);
+        html += `<br><span class="sw" style="border-color:${L.color}"></span>${C.lineHTML(BY_ID.get(L.id))}: ` +
+                `<i>F</i> = ${fv.toFixed(3)}`;
+      });
+      readout.innerHTML = html;
+      readout.hidden = false;
+      placeReadout(readout, profCanvas, ev);
+    });
+  }
+  function nearest(xs, v) {
+    let lo = 0, hi = xs.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (xs[m] < v) lo = m; else hi = m; }
+    return Math.abs(xs[lo] - v) <= Math.abs(xs[hi] - v) ? lo : hi;
+  }
+
+  F.exportButtons($("profTools"), () => buildProfileSpec(state.profN), "voigt_profiles",
+                  () => ({ width: 480, height: 110 * Math.max(1, state.sel.length) + 100 }));
+  window.CGM_PAGE = {                                   // for tests / console use
+    spec: () => buildSpec(),
+    profSpec: () => buildProfileSpec(state.profN),
+    profSize: () => ({ width: 480, height: 110 * Math.max(1, state.sel.length) + 100 }),
+  };
+
+  function renderProfCaption() {
+    const n = previewN ?? state.profN;
+    const names = state.sel.map(s => C.lineHTML(BY_ID.get(s.id)));
+    $("profCaption").innerHTML = names.length
+      ? `Normalized flux of a single Voigt component at log&thinsp;<i>N</i> = ${n.toFixed(2)}` +
+        `${previewN !== null && Math.abs(previewN - state.profN) > 1e-6 ? " (preview)" : ""} and <i>b</i> = ${fmtB(state.b)}&nbsp;km&thinsp;s<sup>−1</sup> ` +
+        `for ${listJoin(names)}. Shading marks the absorbed flux, whose area is the equivalent width. ` +
+        `Hover over Figure 1 to preview other column densities; click it to fix one (dashed line).`
+      : "Select one or more transitions.";
+  }
+
+  function setProfN(n) {
+    state.profN = clampN(n);
+    $("pnRange").value = state.profN; $("pnNum").value = state.profN.toFixed(2);
+    drawPin(); renderStats(); writeHash(); scheduleProfiles();
+  }
 
   // ---------------------------------------------------------------- controls
   function populateIonSelect() {
@@ -201,7 +366,8 @@
 
   function renderStats() {
     const U = P.UNITS[state.unit];
-    const N = Math.pow(10, state.statN);
+    const N = Math.pow(10, state.profN);
+    $("statNtxt").textContent = state.profN.toFixed(2);
     document.querySelectorAll(".unitlbl").forEach(e => { e.innerHTML = UNIT_HTML[state.unit]; });
     let anySum = false, anyAlt = false;
     $("statsBody").innerHTML = state.sel.length ? state.sel.map(s => {
@@ -233,7 +399,7 @@
     $("cogCaption").innerHTML = names.length
       ? `Curves of growth for ${listJoin(names)} at <i>b</i> = ${fmtB(state.b)}&nbsp;km&thinsp;s<sup>−1</sup> (solid)` +
         (refBs.length ? `; ${listJoin(refBs.map(rb => `${lsName[rb]} curves show <i>b</i> = ${rb}`))}&nbsp;km&thinsp;s<sup>−1</sup>` : "") +
-        `. Hover over the figure to read off values.`
+        `. The dashed vertical line marks the column density of the profiles in Figure 2. Hover to read off values.`
       : "Select one or more transitions.";
   }
   function listJoin(a) { return a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1]; }
@@ -245,7 +411,12 @@
     renderCaption();
     if (pending) return;
     pending = true;
-    requestAnimationFrame(() => { pending = false; view.draw(); renderStats(); writeHash(); });
+    nextFrame(() => {
+      pending = false;
+      view.draw();                                       // its after-hook redraws Figure 2
+      if (!cogFig || !state.sel.length) scheduleProfiles();
+      renderStats(); writeHash();
+    });
   }
 
   function toggle(id, on) {
@@ -261,6 +432,11 @@
     update({ list: true });
   }
 
+  function syncNRange() {
+    for (const id of ["pnRange", "pnNum"]) { $(id).min = state.nMin; $(id).max = state.nMax; }
+    $("pnRange").value = state.profN; $("pnNum").value = state.profN.toFixed(2);
+  }
+
   // ---------------------------------------------------------------- wire up
   readHash();
   populateIonSelect();
@@ -269,6 +445,8 @@
   $("bRange").value = Math.min(150, state.b); $("bNum").value = state.b;
   $("refB").checked = state.ref; $("unit").value = state.unit;
   $("nMin").value = state.nMin; $("nMax").value = state.nMax;
+  $("vmax").value = state.vmax || "";
+  syncNRange();
 
   $("ionSel").addEventListener("change", e => { state.ion = e.target.value; state.q = ""; $("q").value = ""; renderList(); });
   $("q").addEventListener("input", e => { state.q = e.target.value; renderList(); });
@@ -284,12 +462,22 @@
   $("unit").addEventListener("change", e => { state.unit = e.target.value; update(); });
   for (const id of ["nMin", "nMax"]) $(id).addEventListener("change", () => {
     const a = +$("nMin").value, b = +$("nMax").value;
-    if (isFinite(a) && isFinite(b) && b - a >= 1) { state.nMin = a; state.nMax = b; update(); }
-    else { $("nMin").value = state.nMin; $("nMax").value = state.nMax; }
+    if (isFinite(a) && isFinite(b) && b - a >= 1) {
+      state.nMin = a; state.nMax = b; state.profN = clampN(state.profN); syncNRange(); update();
+    } else { $("nMin").value = state.nMin; $("nMax").value = state.nMax; }
   });
-  $("statN").addEventListener("input", e => { const v = +e.target.value; if (isFinite(v)) { state.statN = v; renderStats(); } });
+  $("pnRange").addEventListener("input", e => setProfN(+e.target.value));
+  $("pnNum").addEventListener("change", e => { const v = +e.target.value; if (isFinite(v)) setProfN(v); else syncNRange(); });
+  $("vmax").addEventListener("change", e => {
+    const v = +e.target.value;
+    state.vmax = e.target.value.trim() && v > 0 ? Math.min(50000, v) : null;
+    if (!state.vmax) e.target.value = "";
+    writeHash(); scheduleProfiles();
+  });
+  WIDE.addEventListener("change", () => scheduleProfiles());
 
   renderList();
+  renderProfCaption();
   document.fonts.ready.then(() => update());   // legend widths need the real font metrics
   update();
 })();

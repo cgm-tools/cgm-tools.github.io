@@ -4,7 +4,9 @@ Quick-look tools for circumgalactic-medium (CGM) absorption-line spectroscopy, l
 <https://cgm-tools.github.io>:
 
 - **Curve of growth** (`cog.html`): W_r against log N for up to six transitions, with any Doppler b,
-  reference curves at b = 10/30/100 km/s, a hover read-out, a parameter table, and PNG/PDF export.
+  reference curves at b = 10/30/100 km/s, a hover read-out, a parameter table, and PNG/PDF export. Next to it,
+  a stacked velocity plot of the Voigt profiles at a chosen log N (hover over the curve of growth to preview,
+  click to fix).
 - **Ions & lines** (`ions.html`): an ionization-energy ladder and a table of NIST ionization energies, Gnat &
   Sternberg (2007) CIE peak temperatures and resonance lines for 20 elements.
 
@@ -31,7 +33,7 @@ All atomic data are generated from unedited copies of the original tables in `so
 ```
 index.html cog.html ions.html     pages
 assets/css/site.css               LaTeX-article styling (CMU Serif)
-assets/js/physics.js              Voigt (Humlicek 1982 W4), tau0, a, W(N, b)
+assets/js/physics.js              Voigt (Humlicek 1982 W4), tau0, a, W(N, b), profiles F(v)
 assets/js/mplfig.js               matplotlib-style SVG figures + PNG/PDF export (D3 scales)
 assets/js/common.js, cog.js, ions.js
 data/lines.js, data/ions.js       GENERATED: do not edit; CSV copies alongside

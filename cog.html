@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <link rel="stylesheet" href="assets/css/site.css">
 </head>
-<body>
+<body class="wide">
 <header class="masthead">
   <a class="brand" href="index.html">cgm-tools</a>
   <nav aria-label="Site">
@@ -44,6 +44,14 @@
       </fieldset>
 
       <fieldset>
+        <legend>Line profiles</legend>
+        <div class="row"><input type="range" id="pnRange" min="10" max="22" step="0.05" value="14" aria-label="log N of the profiles"></div>
+        <div class="row"><label for="pnNum">log <i>N</i></label><input type="number" id="pnNum" min="10" max="22" step="0.05" value="14"></div>
+        <div class="row"><label for="vmax">±Δ<i>v</i> [km&thinsp;s<sup>−1</sup>]</label><input type="number" id="vmax" min="5" max="50000" step="10" placeholder="auto"></div>
+        <p class="small muted" style="margin:.2rem 0 0">Or click a point on the curve of growth.</p>
+      </fieldset>
+
+      <fieldset>
         <legend>Axes</legend>
         <div class="row"><label for="unit"><i>W</i><sub>r</sub> in</label>
           <select id="unit" style="width:auto">
@@ -58,16 +66,23 @@
     </aside>
 
     <section aria-label="Figure and table">
-      <figure id="fig1">
-        <div class="fig-canvas" id="cogCanvas"></div>
-        <div class="fig-tools" id="cogTools"></div>
-        <figcaption><span class="tag">Figure 1.</span> <span id="cogCaption"></span></figcaption>
-      </figure>
+      <div class="figrow">
+        <figure id="fig1">
+          <div class="fig-canvas" id="cogCanvas"></div>
+          <div class="fig-tools" id="cogTools"></div>
+          <figcaption><span class="tag">Figure 1.</span> <span id="cogCaption"></span></figcaption>
+        </figure>
+        <figure id="fig2">
+          <div class="fig-canvas" id="profCanvas"></div>
+          <div class="fig-tools" id="profTools"></div>
+          <figcaption><span class="tag">Figure 2.</span> <span id="profCaption"></span></figcaption>
+        </figure>
+      </div>
 
       <div class="table-scroll">
         <table class="booktabs" id="statsTable">
-          <caption><b>Table 1.</b> Line parameters at the current <i>b</i>, evaluated at
-            log&thinsp;<i>N</i> = <input type="number" id="statN" value="14" step="0.1" min="5" max="25" aria-label="log N for table" style="width:4.5em"></caption>
+          <caption><b>Table 1.</b> Line parameters at the current <i>b</i>, evaluated at the column density of
+            Figure 2, log&thinsp;<i>N</i> = <span id="statNtxt">14.00</span></caption>
           <thead>
             <tr>
               <th>Line</th>
@@ -95,8 +110,9 @@
     normalised to $H(a,0)\to 1$ as $a\to0$:</p>
     <div class="eq">$$\tau_0 = \frac{\sqrt{\pi}\,e^2}{m_e c}\,\frac{f\lambda_0 N}{b} = 1.4974\times10^{-15}\,
       \frac{f\,(\lambda_0/\text{Å})\,(N/\text{cm}^{-2})}{b/\text{km s}^{-1}}, \qquad a = \frac{\Gamma \lambda_0}{4\pi b}.$$</div>
-    <p>The rest-frame equivalent width is</p>
-    <div class="eq">$$W_r = \frac{\lambda_0 b}{c}\int_{-\infty}^{\infty}\left[1-e^{-\tau_0 H(a,u)}\right]du ,$$</div>
+    <p>The normalized flux profile shown in Figure 2 is $F(\Delta v) = \exp[-\tau_0\,H(a,\Delta v/b)]$, and the
+    rest-frame equivalent width is its absorbed area,</p>
+    <div class="eq">$$W_r = \frac{\lambda_0}{c}\int\left[1-F(\Delta v)\right]d\Delta v = \frac{\lambda_0 b}{c}\int_{-\infty}^{\infty}\left[1-e^{-\tau_0 H(a,u)}\right]du ,$$</div>
     <p>which has the familiar limits $W_r = (\pi e^2/m_e c^2)\,N f \lambda_0^2$ on the linear part
     ($\tau_0 \ll 1$), $W_r \simeq 2(\lambda_0 b/c)\sqrt{\ln\tau_0}$ on the flat part, and
     $W_r \simeq 2(\lambda_0 b/c)\,(\sqrt{\pi}\,\tau_0 a)^{1/2}$ on the damping part ($\tau_0 a \gg 1$).
@@ -104,7 +120,8 @@
     rule through the Doppler core, a logarithmic grid through the Lorentzian wings, and the analytic wing
     contribution beyond the last grid point. Against an independent calculation (<code>scipy.special.wofz</code>
     with adaptive quadrature) the curves agree to better than 10<sup>−4</sup> for log&thinsp;<i>N</i> = 10–22 and
-    <i>b</i> = 5–100&nbsp;km&thinsp;s<sup>−1</sup> (<a href="tests/physics.html">test page</a>).</p>
+    <i>b</i> = 5–100&nbsp;km&thinsp;s<sup>−1</sup>, and the profiles of Figure 2 integrate to the same
+    <i>W</i><sub>r</sub> to better than 10<sup>−4</sup> (<a href="tests/physics.html">test page</a>).</p>
     <p>Wavelengths, oscillator strengths and damping constants are read from
     Morton (2003) for λ&nbsp;&gt;&nbsp;912&nbsp;Å and from Verner et al. (1996) for EUV and X-ray lines.
     Lines without a tabulated Γ use the sum of the radiative rates out of the same upper level in the same
